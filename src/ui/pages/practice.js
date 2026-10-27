@@ -1,0 +1,615 @@
+/**
+ * 出题台
+ *
+ * 只负责：收集参数 → 调用出题引擎 → 展示结果。
+ * 页面处理输入确认与反馈；出题范围、默认知识点、去重仍由 domain 层兜底。
+ */
+
+import { el } from '../../utils/dom.js';
+import { bus, EVENTS } from '../../core/bus.js';
+import { getActiveProfile } from '../../domain/profile.js';
+import {
+  GRADES, QUESTION_TYPES, getKnowledgePoint, getKnowledgePoints, filterKnowledgePoints, getGradeDefaultKPs
+} from '../../domain/syllabus.js';
+import { generatePaper, regeneratePaper, dedupeKey, validatePaperOptions } from '../../domain/generator.js';
+import { calculatePaperStats, removePaperQuestion, checkPaperReadiness, DIFFICULTY_RULES } from '../../domain/paper.js';
+import { go } from '../../core/router.js';
+import { createSession, resumeSession, discardSession } from '../../app/quizSession.js';
+import { icon } from '../components/icon.js';
+
+const DIFFICULTIES = [
+  { id: 'easy', name: '简单', desc: '更基础' },
+  { id: 'normal', name: '适中', desc: '按教材' },
+  { id: 'hard', name: '挑战', desc: '更有难度' }
+];
+
+const COUNTS = [10, 20, 30, 50];
+
+/** 页面内状态（不持久化，刷新即重置） */
+const state = {
+  grade: 1,
+  keyword: '',
+  kpIds: [],
+  count: 30,
+  countDraft: '30',
+  countFeedback: '',
+  difficulty: 'normal',
+  types: [],
+  paper: null,
+  originalPaperKeys: new Set(),
+  showAnswers: false,
+  paperNotice: '',
+  paperError: '',
+  error: '',
+  elapsed: 0,
+  limitMinutes: 0
+};
+
+export function renderPractice(root) {
+  const profile = getActiveProfile();
+  state.grade = profile?.grade ?? 1;
+  state.keyword = '';
+  state.kpIds = getGradeDefaultKPs(state.grade);
+  state.count = 30;
+  state.countDraft = '30';
+  state.countFeedback = '';
+  state.difficulty = 'normal';
+  state.types = ['horizontal'];
+  state.paper = null;
+  state.originalPaperKeys = new Set();
+  state.showAnswers = false;
+  state.paperNotice = '';
+  state.paperError = '';
+  state.error = '';
+  state.limitMinutes = 0;
+
+  paint(root);
+}
+
+function paint(root, focusId) {
+  root.replaceChildren(
+    el('section', { class: 'page page-home' }, [
+      el('header', { class: 'page-head' }, [
+        el('h1', { text: '出题练习' }),
+        el('p', { class: 'muted', text: '选择年级、知识点、题量与题型，生成练习题。' })
+      ]),
+      resumeBlock(root),
+      el('div', { class: 'home-workspace' }, [
+        el('div', { class: 'knowledge-column' }, [
+          card('选择年级', gradeRow(root), '01', '支持小学 1–3 年级'),
+          card('选择知识点', pointBlock(root), '02', '共 24 个知识点，可按年级查看并选择')
+        ]),
+        el('aside', { class: 'settings-column', 'aria-label': '练习设置' }, [
+          card('练习设置', [optionBlock(root), compatibilityBlock(),
+            el('div', { class: 'practice-summary' }, [
+              el('div', { class: 'summary-icon' }, icon('book')),
+              el('div', {}, [el('strong', { id: 'count-confirmation', text: `本次将生成 ${state.count} 道题` }),
+                el('p', { text: `${GRADES.find(g => g.id === state.grade).name} · ${state.kpIds.length} 个知识点` })])
+            ]), errorBlock(root), generateBar(root),
+            el('p', { class: 'settings-note' }, [icon('leaf'), '不用赶时间，认真做好每一道。'])
+          ], '03', '设置题量、难度、题型及倒计时')
+        ])
+      ]),
+      state.paper ? paperBlock(root) : null
+    ].filter(Boolean))
+  );
+  if (focusId) root.querySelector(`#${focusId}`)?.focus({ preventScroll: true });
+}
+
+/* ------------------------------------------------------------------ *
+ * 区块
+ * ------------------------------------------------------------------ */
+
+function card(title, body, step, description) {
+  return el('section', { class: 'card' }, [
+    el('div', { class: 'card-heading' }, [
+      step ? el('span', { class: 'step-number', text: step }) : icon('clock', 'resume-icon'),
+      el('div', {}, [el('h2', { class: 'card-title', text: title }),
+        description ? el('p', { class: 'card-description', text: description }) : null])
+    ]),
+    ...(Array.isArray(body) ? body : [body])
+  ]);
+}
+
+function resumeBlock(root) {
+  const session = resumeSession();
+  if (!session) return null;
+  return card('还有一份未完成的练习', el('div', {}, [
+    el('p', { text: `进度：第 ${session.cursor + 1} / ${session.paper.questions.length} 题` }),
+    el('div', { class: 'actions' }, [
+      el('a', { class: 'btn btn-primary', href: '#/quiz', text: '继续练习' }),
+      el('button', { class: 'btn', text: '放弃上次练习', onclick: () => {
+        if (window.confirm('放弃上次练习？未结算的进度将被删除。')) { discardSession(); paint(root); }
+      } })
+    ])
+  ]));
+}
+
+function gradeRow(root) {
+  const notes = ['打好计算基础', '乘除法小进阶', '探索更多运算'];
+  return el('div', { class: 'chips grade-options' }, GRADES.map((g) =>
+    el('button', {
+      id: `grade-${g.id}`,
+      class: 'chip' + (g.id === state.grade ? ' is-active' : ''),
+      type: 'button',
+      'aria-pressed': g.id === state.grade ? 'true' : 'false',
+      'aria-label': g.name,
+      onclick: () => {
+        if (g.id === state.grade) return;
+        state.grade = g.id;
+        state.keyword = '';
+        state.kpIds = getGradeDefaultKPs(g.id);
+        state.paper = null;
+        state.error = '';
+        paint(root, `grade-${g.id}`);
+      }
+    }, [el('span', { class: 'grade-number', text: String(g.id) }),
+      el('span', { class: 'grade-option-copy' }, [el('strong', { text: g.name }),
+        el('span', { text: notes[g.id - 1] })])])
+  ));
+}
+
+function pointBlock(root) {
+  const picker = el('div', { class: 'knowledge-picker' });
+  const clear = el('button', {
+    id: 'clear-kp-search', class: 'btn', type: 'button', text: '清空搜索',
+    disabled: !state.keyword,
+    onclick: () => {
+      state.keyword = '';
+      search.value = '';
+      clear.disabled = true;
+      updatePointResults(picker, root);
+      search.focus({ preventScroll: true });
+    }
+  });
+  const search = el('input', {
+    id: 'kp-search', class: 'kp-search-input', type: 'search', value: state.keyword,
+    placeholder: '输入名称或说明，如“进位”“分数”', autocomplete: 'off',
+    'aria-controls': 'kp-results', 'aria-describedby': 'kp-search-hint',
+    oninput: e => {
+      state.keyword = e.target.value;
+      clear.disabled = !state.keyword;
+      // 只更新列表，保留输入框、光标和中文输入法的组合输入状态。
+      updatePointResults(picker, root);
+    }
+  });
+  picker.append(
+    el('label', { class: 'field-label', for: 'kp-search', text: '搜索当前年级知识点' }),
+    el('div', { class: 'kp-search-row' }, [search, clear]),
+    el('p', { id: 'kp-search-hint', class: 'small kp-search-hint',
+      text: '切换年级会清空搜索，并勾选该年级的默认知识点。' }),
+    el('div', { id: 'kp-results' })
+  );
+  updatePointResults(picker, root);
+  return picker;
+}
+
+function updatePointResults(picker, root) {
+  const grade = GRADES.find(g => g.id === state.grade);
+  const allPoints = getKnowledgePoints(state.grade);
+  const points = filterKnowledgePoints({ grade: state.grade, keyword: state.keyword });
+  const searching = !!state.keyword.trim();
+  const bulk = (mode, label) => el('button', {
+    id: `kp-select-${mode}`, class: 'btn', type: 'button',
+    text: label + (searching ? '搜索结果' : ''), disabled: points.length === 0,
+    onclick: () => {
+      const selected = new Set(state.kpIds);
+      for (const point of points) {
+        if (mode === 'none' || (mode === 'invert' && selected.has(point.id))) selected.delete(point.id);
+        else selected.add(point.id);
+      }
+      state.kpIds = allPoints.filter(point => selected.has(point.id)).map(point => point.id);
+      state.paper = null;
+      state.error = '';
+      paint(root, `kp-select-${mode}`);
+    }
+  });
+
+  picker.querySelector('#kp-results').replaceChildren(
+    el('p', { class: 'selection-count', role: 'status', 'aria-live': 'polite',
+      text: `${grade.name}已选 ${state.kpIds.length} / ${allPoints.length} 个；当前显示 ${points.length} 个` }),
+    el('div', { class: 'kp-bulk-actions', 'aria-label': '知识点批量选择' }, [
+      bulk('all', '全选'), bulk('none', '全不选'), bulk('invert', '反选')
+    ]),
+    el('p', { class: 'small kp-bulk-hint',
+      text: searching ? '批量操作仅影响搜索结果，隐藏知识点的勾选会保留。' : '批量操作适用于当前年级的全部知识点。' }),
+    points.length === 0
+      ? el('p', { class: 'kp-empty', text: '没有找到匹配的知识点，请更换关键词或清空搜索。' })
+      : el('ul', { class: 'kp-list' }, points.map((kp) => {
+      const checked = state.kpIds.includes(kp.id);
+      return el('li', {}, [
+        el('label', { class: 'kp-item' + (checked ? ' is-checked' : '') }, [
+          el('input', {
+            id: `kp-${kp.id}`,
+            type: 'checkbox',
+            checked,
+            'aria-label': `${kp.name}，${grade.name}，第 ${kp.order} 项，${kp.difficulty} 星`,
+            onchange: (e) => {
+              state.kpIds = e.target.checked
+                ? [...state.kpIds, kp.id]
+                : state.kpIds.filter((id) => id !== kp.id);
+              state.paper = null;
+              state.error = '';
+              paint(root, `kp-${kp.id}`);
+            }
+          }),
+          el('span', { class: 'kp-copy' }, [
+            el('span', { class: 'kp-name', text: kp.name }),
+            el('span', { class: 'kp-level' }, [
+              el('span', { text: `${grade.name} · 第 ${kp.order} 项 · ` }),
+              el('span', { class: 'kp-star', text: '★'.repeat(kp.difficulty) }),
+              el('span', { text: ['基础巩固', '进阶练习', '小小挑战'][kp.difficulty - 1] })
+            ]),
+            el('span', { class: 'kp-desc', text: kp.desc }),
+            el('span', { class: 'kp-types', text: `支持题型：${kp.types.map(id =>
+              QUESTION_TYPES.find(type => type.id === id)?.name ?? id).join('、')}` })
+          ])
+        ])
+      ]);
+    }))
+  );
+}
+
+function optionBlock(root) {
+  return el('div', {}, [
+    el('div', { class: 'field' }, [
+      el('span', { class: 'field-label', text: '题量' }),
+      el('div', { class: 'chips count-options' }, COUNTS.map((n) =>
+        el('button', {
+          id: `count-${n}`,
+          class: 'chip' + (n === state.count ? ' is-active' : ''),
+          type: 'button',
+          text: String(n),
+          'aria-pressed': n === state.count ? 'true' : 'false',
+          onclick: () => {
+            state.count = n;
+            state.countDraft = String(n);
+            state.countFeedback = '';
+            state.paper = null;
+            paint(root, `count-${n}`);
+          }
+        })
+      )),
+      el('label', { class: 'field-label custom-count-label', for: 'custom-count', text: '自定义题量（5～100）' }),
+      el('input', {
+        id: 'custom-count', class: 'count-input', type: 'text', inputmode: 'numeric',
+        enterkeyhint: 'done', autocomplete: 'off', value: state.countDraft,
+        'aria-describedby': 'count-hint count-feedback',
+        oninput: e => {
+          state.countDraft = e.target.value;
+          state.countFeedback = '';
+          // 编辑时不重绘输入框，也不保留已经失效的旧卷。
+          state.paper = null;
+          root.querySelector('.paper-block')?.remove();
+          updateCountControls(root, true);
+        },
+        onblur: () => confirmCount(root),
+        onkeydown: e => {
+          if (e.key !== 'Enter' || e.isComposing) return;
+          e.preventDefault();
+          confirmCount(root);
+        }
+      }),
+      el('p', { id: 'count-hint', class: 'small count-hint',
+        text: '请输入 5～100 的整数，离开输入框或按回车确认。小数、空值和非数字会恢复上次有效题量。' }),
+      el('p', { id: 'count-feedback', class: 'small count-feedback', role: 'status',
+        'aria-live': 'polite', 'aria-atomic': 'true', text: state.countFeedback })
+    ]),
+    el('div', { class: 'field' }, [
+      el('span', { class: 'field-label', text: '难度' }),
+      el('div', { class: 'chips difficulty-options' }, DIFFICULTIES.map((d) =>
+        el('button', {
+          id: `difficulty-${d.id}`,
+          class: 'chip' + (d.id === state.difficulty ? ' is-active' : ''),
+          type: 'button',
+          'aria-label': d.name,
+          'aria-pressed': d.id === state.difficulty ? 'true' : 'false',
+          onclick: () => {
+            state.difficulty = d.id;
+            state.paper = null;
+            state.error = '';
+            paint(root, `difficulty-${d.id}`);
+          }
+        }, [el('strong', { text: d.name }), el('span', { text: d.desc })])
+      )),
+      el('p', { class: 'small option-hint', text: '简单：1 星题至少占 70%；挑战：3 星题至少占 50%。适中按所选知识点均衡出题。' })
+    ]),
+    el('div', { class: 'field' }, [
+      el('span', { class: 'field-label', text: '题型（可多选）' }),
+      el('div', { class: 'chips type-options' }, QUESTION_TYPES.map((t) =>
+        el('button', {
+          id: `type-${t.id}`,
+          class: 'chip' + (state.types.includes(t.id) ? ' is-active' : ''),
+          type: 'button',
+          text: t.name,
+          'aria-pressed': state.types.includes(t.id) ? 'true' : 'false',
+          onclick: () => {
+            state.types = state.types.includes(t.id)
+              ? state.types.filter((x) => x !== t.id)
+              : [...state.types, t.id];
+            if (state.types.length === 0) state.types = [t.id]; // 至少保留一种
+            state.paper = null;
+            state.error = '';
+            paint(root, `type-${t.id}`);
+          }
+        })
+      )),
+      el('p', { class: 'small option-hint', text: '仅使用已选知识点支持的题型；可多选混合出题，至少保留一种。' })
+    ]),
+    el('div', { class: 'field timer-field' }, [
+      el('label', { class: 'field-label', for: 'limit-minutes' }, [icon('clock'), '倒计时（可选）']),
+      el('select', { id: 'limit-minutes', class: 'time-select', onchange: e => {
+        state.limitMinutes = Number(e.target.value);
+      } }, [0, ...Array.from({ length: 60 }, (_, i) => i + 1)].map(n => el('option', {
+        value: n, selected: state.limitMinutes === n, text: n ? `${n} 分钟` : '不限时，慢慢来'
+      })))
+    ])
+  ]);
+}
+
+function errorBlock(root) {
+  if (!state.error) return null;
+  return el('p', { class: 'alert', role: 'alert', text: state.error });
+}
+
+function compatibilityBlock() {
+  const checked = validatePaperOptions(state);
+  return el('div', { id: 'settings-compatibility', class: 'small options-feedback', role: 'status', 'aria-live': 'polite' }, [
+    !checked.ok && state.kpIds.length ? el('p', { text: checked.message }) : null,
+    ...checked.warnings.map(message => el('p', { text: message }))
+  ]);
+}
+
+function confirmCount(root) {
+  const raw = state.countDraft.trim();
+  const previous = state.count;
+  if (state.countDraft !== String(previous)) {
+    if (!raw) {
+      state.countFeedback = `题量不能为空，已恢复为 ${previous} 道。`;
+    } else if (!/^-?\d+$/.test(raw)) {
+      state.countFeedback = `请输入 5～100 的整数，已恢复为 ${previous} 道。`;
+    } else {
+      state.count = Math.max(5, Math.min(100, Number(raw)));
+      state.countFeedback = state.count !== Number(raw)
+        ? `题量范围为 5～100，已调整为 ${state.count} 道。` : '';
+    }
+    state.countDraft = String(state.count);
+  }
+  // 不重绘页面，避免 blur 吞掉随后点击的快捷题量或“开始出题”。
+  updateCountControls(root);
+}
+
+function updateCountControls(root, editing = false) {
+  if (!editing) root.querySelector('#custom-count').value = state.countDraft;
+  root.querySelector('#count-feedback').textContent = state.countFeedback;
+  root.querySelectorAll('.count-options button').forEach(button => {
+    const selected = !editing && Number(button.textContent) === state.count;
+    button.classList.toggle('is-active', selected);
+    button.setAttribute('aria-pressed', String(selected));
+  });
+  root.querySelector('#count-confirmation').textContent = editing
+    ? '题量正在编辑，离开输入框后确认。' : `本次将生成 ${state.count} 道题`;
+  const label = editing ? '确认题量并出题' : `开始出题 · ${state.count} 道`;
+  const generateButton = root.querySelector('#generate-paper');
+  generateButton.setAttribute('aria-label', label);
+  generateButton.querySelector('.generate-label').textContent = label;
+  root.querySelector('.cta-context strong').textContent = `${state.count} 道题`;
+}
+
+function generateBar(root) {
+  return el('div', { class: 'sticky-bar' }, [
+    el('span', { class: 'cta-context' }, [el('strong', { text: `${state.count} 道题` }),
+      el('small', { text: `${state.kpIds.length} 个知识点已选` })]),
+    el('button', {
+      id: 'generate-paper',
+      class: 'btn btn-primary btn-block',
+      type: 'button',
+      'aria-label': `开始出题 · ${state.count} 道`,
+      onclick: () => generate(root)
+    }, [icon('spark'), el('span', { class: 'generate-label', text: `开始出题 · ${state.count} 道` }), icon('arrow')])
+  ]);
+}
+
+/* ------------------------------------------------------------------ *
+ * 出题
+ * ------------------------------------------------------------------ */
+
+function generate(root) {
+  confirmCount(root);
+  state.error = '';
+
+  const checked = validatePaperOptions(state);
+  if (!checked.ok) {
+    state.paper = null;
+    state.error = checked.message;
+    paint(root, 'generate-paper');
+    return;
+  }
+
+  const started = performance.now();
+  try {
+    usePaper(generatePaper({
+      kpIds: state.kpIds,
+      count: state.count,
+      difficulty: state.difficulty,
+      types: state.types
+    }));
+    state.elapsed = performance.now() - started;
+  } catch (err) {
+    console.error('[practice] 出题失败：', err);
+    state.paper = null;
+    state.error = err.code === 'GENERATION_EXHAUSTED' ? err.message
+      : '当前条件下无法出题，请调整知识点、难度或题型。';
+  }
+
+  paint(root, state.paper ? 'paper-heading' : 'generate-paper');
+  if (state.paper) {
+    bus.emit(EVENTS.PAPER_GENERATED, { paperId: state.paper.id });
+    root.querySelector('.paper-block')?.scrollIntoView({ behavior: 'instant', block: 'start' });
+  }
+}
+
+function usePaper(paper) {
+  state.paper = paper;
+  state.originalPaperKeys = new Set(paper.questions.map(question => dedupeKey(question, true)));
+  state.showAnswers = false;
+  state.paperNotice = '';
+  state.paperError = '';
+}
+
+function paintPaper(root, focusId) {
+  const previous = root.querySelector('.paper-block');
+  if (previous) previous.replaceWith(paperBlock(root));
+  else paint(root);
+  if (focusId) root.querySelector(`#${focusId}`)?.focus({ preventScroll: true });
+}
+
+function regenerate(root) {
+  try {
+    // 先成功生成才替换；失败时保留原卷、删除结果与答案开关状态。
+    const paper = regeneratePaper(state.paper, state.originalPaperKeys);
+    usePaper(paper);
+    state.paperNotice = `已重新生成 ${paper.questions.length} 道新题，答案已隐藏。`;
+    paintPaper(root, 'regenerate-paper');
+    bus.emit(EVENTS.PAPER_GENERATED, { paperId: paper.id });
+  } catch (error) {
+    state.paperError = error.code === 'REGENERATION_EXHAUSTED' ? error.message
+      : '重新生成失败，原预览已保留，请重试。';
+    state.paperNotice = '';
+    if (error.code !== 'REGENERATION_EXHAUSTED') console.error('[practice] 重新生成失败：', error);
+    paintPaper(root, 'regenerate-paper');
+  }
+}
+
+function deleteQuestion(root, questionId) {
+  const index = state.paper.questions.findIndex(question => question.id === questionId);
+  if (index < 0) return;
+  state.paper = removePaperQuestion(state.paper, questionId);
+  const questions = state.paper.questions;
+  if (!questions.length) state.showAnswers = false;
+  state.paperNotice = `已删除第 ${index + 1} 题，剩余 ${questions.length} 道。`;
+  state.paperError = '';
+  const next = questions[Math.min(index, questions.length - 1)];
+  paintPaper(root, next ? `delete-${next.id}` : 'regenerate-paper');
+}
+
+/* ------------------------------------------------------------------ *
+ * 结果
+ * ------------------------------------------------------------------ */
+
+function paperBlock(root) {
+  const paper = state.paper;
+  // 始终从当前题目计算，避免沿用旧卷或日后调整前的缓存统计。
+  const stats = calculatePaperStats(paper.questions);
+  const actual = stats.total;
+  const stars = paper.questions.map((q) => q.difficulty);
+  const targetStar = DIFFICULTY_RULES[paper.options.difficulty]?.star;
+  const targetCount = stars.filter(star => star === targetStar).length;
+  const readiness = checkPaperReadiness(paper);
+  const removed = paper.removedCount ?? 0;
+  const generationShortfall = Math.max(0, paper.shortfall - removed);
+
+  return el('section', { class: 'card paper-block' }, [
+    el('div', { class: 'row-between' }, [
+      el('h2', { id: 'paper-heading', tabindex: -1, class: 'card-title' }, [icon('book'), '本次题目']),
+      el('span', { class: 'ready-badge', text: !readiness.ok ? '请调整题目' : removed ? '已调整' : '准备好啦' })
+    ]),
+
+    el('p', { class: 'paper-meta' }, [
+      el('span', { class: 'paper-total', text: `共 ${actual} 道` }),
+      el('span', { class: 'paper-average' }, [
+        el('span', { class: 'average-value', text: actual ? `平均难度 ${stats.avgStar.toFixed(1)} 星` : '平均难度 —' }),
+        actual ? averageStars(stats.avgStar) : null
+      ]),
+      generationShortfall > 0
+        ? el('span', { class: 'warn-text', text: `已接近上限，少出 ${generationShortfall} 道` }) : null,
+      removed ? el('span', { class: 'paper-removed', text: `已手动删除 ${removed} 道` }) : null
+    ].filter(Boolean)),
+
+    targetStar && actual ? el('p', { class: 'small difficulty-result',
+      text: `${targetStar} 星题 ${targetCount} / ${actual} 道，占比 ${(targetCount / actual * 100).toFixed(1)}%` }) : null,
+    ...(paper.warnings ?? []).map(message => el('p', { class: 'small paper-warning', text: message })),
+
+    el('div', { class: 'paper-actions' }, [
+      el('button', { id: 'regenerate-paper', type: 'button', class: 'btn', text: '重新生成', onclick: () => regenerate(root) }),
+      el('button', { id: 'toggle-answers', type: 'button', class: 'btn',
+        text: state.showAnswers ? '隐藏答案' : '显示答案', 'aria-pressed': String(state.showAnswers),
+        'aria-controls': 'preview-question-list', disabled: actual === 0,
+        onclick: () => {
+          state.showAnswers = !state.showAnswers;
+          state.paperNotice = state.showAnswers ? `已显示 ${actual} 道题的答案。` : '答案已隐藏。';
+          paintPaper(root, 'toggle-answers');
+        }
+      })
+    ]),
+    el('p', { id: 'paper-feedback', class: 'small paper-feedback', role: 'status', 'aria-live': 'polite',
+      'aria-atomic': 'true', text: state.paperNotice }),
+    state.paperError ? el('p', { id: 'paper-error', class: 'alert', role: 'alert', text: state.paperError }) : null,
+
+    distributionBlock(stats),
+
+    !readiness.ok ? el('p', { class: 'small paper-readiness', text: readiness.message }) : null,
+
+    el('button', { class: 'btn btn-primary btn-block', 'aria-label': '开始答题', disabled: !readiness.ok,
+      onclick: () => {
+        const checked = checkPaperReadiness(state.paper);
+        if (!checked.ok) { state.paperError = checked.message; paintPaper(root, 'regenerate-paper'); return; }
+        if (resumeSession()) {
+          state.paperError = '请先继续或放弃上次练习，再开始新练习。';
+          paintPaper(root);
+          return;
+        }
+        try {
+          createSession(paper, { limitMs: state.limitMinutes ? state.limitMinutes * 60000 : null });
+          go('/quiz?start=1');
+        } catch (e) { state.paperError = e.message; paintPaper(root); }
+      }
+    }, ['开始答题', icon('arrow')]),
+
+    el('h3', { class: 'preview-heading', text: '题目预览' }),
+    el('p', { class: 'small answer-visibility-hint', text: !actual ? '当前没有可显示的答案。'
+      : state.showAnswers ? '答案已显示，可点击“隐藏答案”收起。' : '答案默认隐藏。' }),
+    el('ol', { id: 'preview-question-list', class: 'question-list' }, paper.questions.map((q, index) =>
+      el('li', { class: 'question-item', dataset: { kpId: q.kpId, type: q.type, difficulty: q.difficulty } }, [
+        el('div', { class: 'question-row' }, [
+          el('div', { class: 'question-content' }, [
+            q.type === 'vertical' && q.layout?.rows
+              ? el('pre', { class: 'preview-vertical', 'aria-label': q.text,
+                text: q.layout.rows.join('\n') + '\n' + '─'.repeat(Math.max(4, q.layout.width || 4)) })
+              : el('span', { class: 'q-text', text: q.text }),
+            el('span', { class: 'q-star', text: '★'.repeat(q.difficulty) }),
+            state.showAnswers ? el('p', { class: 'question-answer', text: `答案：${q.answer}` }) : null
+          ]),
+          el('button', { id: `delete-${q.id}`, class: 'btn question-delete', type: 'button', text: '删除',
+            'aria-label': `删除第 ${index + 1} 题`, onclick: () => deleteQuestion(root, q.id) })
+        ])
+      ])
+    ))
+  ]);
+}
+
+function averageStars(value) {
+  return el('span', { class: 'average-stars', 'aria-hidden': 'true' }, [0, 1, 2].map(index =>
+    el('span', { class: 'preview-star' }, [
+      el('span', { text: '☆' }),
+      el('span', { class: 'preview-star-fill', text: '★',
+        style: { width: `${Math.max(0, Math.min(1, value - index)) * 100}%` } })
+    ])
+  ));
+}
+
+function distributionBlock(stats) {
+  const entries = Object.entries(stats.dist).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  return el('section', { class: 'paper-distribution', 'aria-labelledby': 'distribution-heading' }, [
+    el('h3', { id: 'distribution-heading', class: 'preview-heading', text: '知识点分布' }),
+    el('p', { class: 'small distribution-note', text: stats.total
+      ? '按当前题数统计；占比四舍五入，合计可能不为 100%。' : '暂无题目，重新生成后可查看知识点分布。' }),
+    el('ul', { class: 'distribution-list' }, entries.map(([kpId, count]) => {
+      const percent = Math.round(count * 100 / stats.total);
+      return el('li', { class: 'distribution-item', dataset: { kpId, count, percent } }, [
+        el('span', { class: 'distribution-name', text: getKnowledgePoint(kpId)?.name ?? kpId }),
+        el('span', { class: 'distribution-value', text: `${count} 道 · ${percent}%` })
+      ]);
+    }))
+  ]);
+}

@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="description" content="每天一点点，进步看得见。为小学 1—3 年级孩子定制口算练习，出题、答题、即时批改。">
+  <title>口算小达人 · B10 测试版</title>
+  <link rel="stylesheet" href="./assets/css/base.css">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./assets/icons/app-192.png" type="image/png">
+  <link rel="apple-touch-icon" href="./assets/icons/apple-touch-icon.png">
+</head>
+<body>
+  <header id="topbar" class="topbar"></header>
+  <main id="app" class="app"></main>
+  <footer class="site-footer">
+    <p>B10 独立测试版 · 学习数据与原网页分开保存</p>
+    <section id="pwa-panel" class="pwa-panel" aria-label="离线与安装">
+      <p id="pwa-status" role="status" aria-live="polite">首次打开需要联网；看到“离线已就绪”后可断网使用。</p>
+      <div class="actions">
+        <button id="pwa-check" class="btn" type="button">检查更新 / 重试离线</button>
+        <button id="pwa-install" class="btn" type="button">添加到主屏幕</button>
+      </div>
+      <p id="pwa-detail" hidden></p>
+    </section>
+  </footer>
+
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>

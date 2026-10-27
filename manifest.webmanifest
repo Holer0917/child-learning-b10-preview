@@ -1,0 +1,26 @@
+{
+  "id": "./",
+  "name": "口算小达人 · B10 测试版",
+  "short_name": "口算测试",
+  "lang": "zh-CN",
+  "description": "独立测试出题、预览、答题、反馈与成绩历史；学习数据与原网页分开保存。",
+  "start_url": "./#/home",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "icons": [
+    {
+      "src": "./assets/icons/app-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./assets/icons/app-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
