@@ -234,7 +234,6 @@ h2 { font-size: 19px; margin: 0 0 12px; }
 .pwa-panel .actions { margin: 8px 0 12px; max-width: 440px; }
 .pwa-panel .btn { font-size: 13px; }
 .pwa-panel p { overflow-wrap: anywhere; }
-.pwa-panel #pwa-detail { padding: 12px; border: 1px solid var(--c-line); color: var(--c-text); font-size: 14px; line-height: 1.7; white-space: pre-line; }
 @media (hover: hover) {
   .btn:hover:not(:disabled), .chip:hover, .start-entry:hover, .history-record:hover { border-color: #111; text-decoration: underline; }
 }

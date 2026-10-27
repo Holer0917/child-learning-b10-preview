@@ -5,28 +5,9 @@ export function initPwa() {
   const status = panel.querySelector('#pwa-status'), action = panel.querySelector('#pwa-check');
   const install = panel.querySelector('#pwa-install'), detail = panel.querySelector('#pwa-detail');
   const base = new URL('../../', import.meta.url), workerUrl = new URL('sw.js', base).href;
-  let registration, promptEvent, busy = false, ready = false, notice = '', installBusy = false, installed = false;
+  let registration, promptEvent, busy = false, ready = false, notice = '', installBusy = false;
   const say = message => { status.textContent = message; };
-  const ua = navigator.userAgent || '';
-  const qqBrowser = /MQQBrowser|QQBrowser/i.test(ua);
-  const ios = /iPhone|iPad|iPod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-  const inApp = () => window.matchMedia?.('(display-mode: standalone)')?.matches || navigator.standalone === true;
-  const installGuide = () => {
-    if (ios) return 'iPhone/iPad 添加到主屏幕\n① 在 Safari 打开当前网址。\n② 点击“分享”→“添加到主屏幕”→“添加”。\n如有“作为网页 App 打开”选项，可开启后添加。';
-    if (qqBrowser) return 'QQ 浏览器添加到桌面指引\n① 打开浏览器菜单，查找“添加到桌面”或“发送到桌面”。\n② 没有相关选项时，复制网址到 Chrome，打开菜单选择“安装并创建快捷方式”或“添加到主屏幕”。\n桌面快捷方式和独立网页应用的支持情况由浏览器决定。';
-    if (/Android/i.test(ua)) return '安卓手机安装指引\n① 在 Chrome 打开当前网址，点击右上角菜单。\n② 选择“安装并创建快捷方式”或“添加到主屏幕”，按提示完成。\n其它浏览器请查找相应的桌面入口；没有入口时仍可在网页中练习。';
-    return '浏览器安装指引\n在浏览器菜单中查找“安装应用”“将此站点作为应用安装”或“添加到主屏幕”。\n若没有对应入口，仍可直接在浏览器中练习。';
-  };
-  detail.setAttribute('role', 'status'); detail.setAttribute('aria-live', 'polite'); detail.tabIndex = -1;
-  install.setAttribute('aria-controls', detail.id); install.setAttribute('aria-expanded', 'false');
-  const explain = (message, moveFocus = true) => {
-    detail.hidden = false; detail.textContent = message; install.setAttribute('aria-expanded', 'true');
-    if (moveFocus) { detail.focus({ preventScroll: true }); detail.scrollIntoView({ block: 'center', behavior: 'auto' }); }
-  };
-  const paintInstall = () => {
-    install.textContent = installed ? '已安装' : inApp() ? '已在应用中打开' : promptEvent ? '安装应用'
-      : qqBrowser ? '添加到桌面指引' : ios ? '添加到主屏幕指引' : '安装 / 添加指引';
-  };
+  const explain = message => { detail.hidden = false; detail.textContent = message; };
   const paint = () => {
     panel.dataset.ready = String(ready);
     if (notice) say(notice);
@@ -98,27 +79,23 @@ export function initPwa() {
   };
   action.addEventListener('click', prepare);
   install.addEventListener('click', async () => {
-    if (installBusy) { explain('正在等待浏览器的安装响应。若没有弹窗，可按下面的指引操作。\n' + installGuide()); return; }
-    if (installed) { explain('应用已安装，可从设备上的图标打开。'); return; }
-    if (inApp()) {
+    if (installBusy) return;
+    if (matchMedia('(display-mode: standalone)').matches || navigator.standalone === true) {
       explain('已在独立应用窗口中打开。'); return;
     }
     if (!promptEvent) {
-      explain(installGuide()); return;
+      explain('iPhone/iPad：在 Safari 中打开，使用“分享”→“添加到主屏幕”。其它浏览器：在菜单中查找“安装应用”或“添加到主屏幕”；若没有此选项，仍可在网页中练习。'); return;
     }
     const event = promptEvent; promptEvent = null; installBusy = true;
-    install.setAttribute('aria-busy', 'true'); paintInstall();
-    explain('已向浏览器请求安装，请在弹窗中确认。若没有弹窗，可按下面的指引操作。\n' + installGuide());
     try {
       await event.prompt();
       const choice = await event.userChoice;
-      if (!installed) explain(choice.outcome === 'accepted' ? '已提交安装请求，请按浏览器提示完成。' : '已取消安装，仍可继续使用网页。', document.activeElement === detail || document.activeElement === install);
-    } catch { explain('浏览器未能打开安装窗口。\n' + installGuide(), document.activeElement === detail || document.activeElement === install); }
-    finally { installBusy = false; install.removeAttribute('aria-busy'); paintInstall(); }
+      explain(choice.outcome === 'accepted' ? '已提交安装请求，请按浏览器提示完成。' : '已取消安装，仍可继续使用网页。');
+    } catch { explain('浏览器暂未提供安装入口，可使用浏览器菜单添加，或继续使用网页。'); }
+    finally { installBusy = false; }
   });
-  window.addEventListener('beforeinstallprompt', event => { event.preventDefault(); promptEvent = installed ? null : event; paintInstall(); });
-  window.addEventListener('appinstalled', () => { installed = true; promptEvent = null; paintInstall(); explain('应用已安装，可从设备上的图标打开。', false); });
-  paintInstall();
+  window.addEventListener('beforeinstallprompt', event => { event.preventDefault(); promptEvent = event; });
+  window.addEventListener('appinstalled', () => { promptEvent = null; explain('应用已安装，可从设备上的图标打开。'); });
 
   if (document.querySelector('meta[name="kidsmath-development"]')) {
     say('本地编辑预览，离线缓存未启用。'); action.hidden = true; return;
