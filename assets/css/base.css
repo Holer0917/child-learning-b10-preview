@@ -11,10 +11,12 @@
   --c-danger: #a21b1b;
   --c-ok: #176337;
   --c-warn: #765012;
+  --topbar-height: 0px;
   font-family: system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; background: #fff; color: var(--c-text); }
+html { scroll-padding-top: calc(var(--topbar-height) + 12px); }
 body { font-size: 16px; line-height: 1.6; -webkit-text-size-adjust: 100%; }
 button, input, select { font: inherit; color: inherit; }
 button, input, select, dialog { background: #fff; }
@@ -32,7 +34,7 @@ button:disabled { cursor: default; color: #777; }
 p { margin: 0 0 12px; }
 h1 { font-size: 26px; margin: 0 0 10px; }
 h2 { font-size: 19px; margin: 0 0 12px; }
-.topbar { max-width: 1100px; margin: 0 auto; padding: 14px 20px; display: flex; align-items: center; flex-wrap: wrap; gap: 12px 24px; border-bottom: 1px solid var(--c-line); background: #fff; }
+.topbar { position: sticky; top: 0; z-index: 10; max-width: 1100px; margin: 0 auto; padding: 14px 20px; display: flex; align-items: center; flex-wrap: wrap; gap: 12px 24px; border-bottom: 1px solid var(--c-line); background: #fff; }
 .brand { text-decoration: none; font-size: 19px; font-weight: 650; }
 .header-nav { display: flex; flex-wrap: wrap; gap: 8px; margin-left: auto; }
 .nav-link { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 7px 10px; text-decoration: none; font-size: 14px; }
@@ -384,9 +386,12 @@ h2 { font-size: 19px; margin: 0 0 12px; }
 .mastery-entry { padding: 16px 0; border-top: 1px solid var(--c-line); }
 .mastery-entry .row-between { flex-wrap: wrap; gap: 8px; }
 .mastery-track { height: 14px; margin: 10px 0; border: 1px solid #555; background: #fff; }
-.mastery-fill { display: block; height: 100%; background: #333; }
-.mastery-entry.level-weak .mastery-fill { background: repeating-linear-gradient(45deg,#333 0 2px,#fff 2px 4px); }
-.mastery-entry.level-warn .mastery-fill { background: #777; }
+.mastery-entry.level-good { --mastery-color: var(--c-ok); }
+.mastery-entry.level-warn { --mastery-color: var(--c-warn); }
+.mastery-entry.level-weak { --mastery-color: var(--c-danger); }
+.mastery-status { color: var(--mastery-color, var(--c-muted)); font-weight: 650; }
+.mastery-fill { display: block; height: 100%; background: var(--mastery-color, var(--c-muted)); }
+.mastery-entry.level-weak .mastery-fill { background: repeating-linear-gradient(45deg,var(--c-danger) 0 2px,#fff 2px 4px); }
 .priority-practice { margin: 16px 0; }
 .priority-practice ul { list-style: none; margin: 0; padding: 0; }
 .priority-practice a { display: block; padding: 10px 0; min-height: 44px; }

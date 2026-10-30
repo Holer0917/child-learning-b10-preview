@@ -137,7 +137,7 @@ function masteryCard(items) {
       const [symbol, label] = levels[i.level];
       return el('li', { class: `mastery-entry level-${i.level}` }, [
         el('div', { class: 'row-between' }, [el('strong', { text: i.name }),
-          el('span', { text: `${symbol} ${label} · ${i.mastery === null ? '未练习' : `${i.mastery}%`}` })]),
+          el('span', { class: 'mastery-status', text: `${symbol} ${label} · ${i.mastery === null ? '未练习' : `${i.mastery}%`}` })]),
         el('div', { class: 'mastery-track', role: 'meter', 'aria-label': `${i.name}掌握度`,
           'aria-valuemin': 0, 'aria-valuemax': 100, 'aria-valuenow': i.mastery ?? 0,
           'aria-valuetext': i.mastery === null ? '未练习' : `${i.mastery}%，${label}` },

@@ -28,6 +28,9 @@ function boot() {
   installKeyboardSupport();
   const mount = document.getElementById('app');
   const header = document.getElementById('topbar');
+  // 顶栏换行、横竖屏切换和答题页收起导航后，滚动仍为焦点留出实际高度。
+  const syncHeaderHeight = () => document.documentElement.style.setProperty('--topbar-height', `${Math.ceil(header.getBoundingClientRect().height)}px`);
+  new ResizeObserver(syncHeaderHeight).observe(header);
 
   // 1. 迁移 + 建档
   const recovery = recoverTransaction();
