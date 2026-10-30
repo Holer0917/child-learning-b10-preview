@@ -26,7 +26,7 @@ export function renderHome(root) {
     el('div', { class: 'start-grid' }, [
       entry('#/practice', '出题练习', '选择年级、知识点和题量，开始口算练习。', 'entry-practice', '进入出题台'),
       entry('#/history', '成绩历史', '查看近期练习的正确率、用时和错题。', 'entry-history', records.length ? `已保留 ${records.length} 次练习` : '还没有练习记录'),
-      entry('#/mistakes', '错题本', '查看首次错题、重练、举一反三和学习统计。', 'entry-mistakes', '打开错题本')
+      entry('#/mistakes', '错题本', '自动整理错题，支持错题重练、举一反三和学习统计。', 'entry-mistakes', '打开错题本')
     ]),
     el('section', { class: 'card latest-practice' }, [
       el('div', {}, [el('h2', { class: 'card-title', text: '最近一次练习' }),

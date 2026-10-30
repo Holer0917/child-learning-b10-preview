@@ -73,7 +73,7 @@ function paint(root, { resetScroll = false } = {}) {
     el('header', { class: 'page-head' }, [
       el('span', { class: 'eyebrow' }, [icon('book'), '把不会的，变成会的']),
       el('h1', { text: '错题本', tabindex: -1 }),
-      el('p', { class: 'muted', text: '系统自动收集首次答错的题；可以勾选重练、举一反三，或标记已攻克。' }),
+      el('p', { class: 'muted', text: '自动收集首次答错的题，支持筛选、错题重练、举一反三和查看学习统计。' }),
       el('div', { class: 'actions mistakes-head-actions' }, [
         el('a', { class: 'btn', href: '#/stats', text: '查看学习统计' })
       ])
@@ -424,7 +424,7 @@ function emptyAll() {
   return el('div', { class: 'history-empty' }, [
     icon('book'),
     el('h2', { text: '还没有错题' }),
-    el('p', { class: 'muted', text: '完成一次练习后，首次答错的题会自动出现在这里。' }),
+    el('p', { class: 'muted', text: '这里收集练习中首次答错的题目。现在没有错题，可以先开始练习。' }),
     el('a', { class: 'btn btn-primary', href: '#/practice', text: '去出题练习' })
   ]);
 }
