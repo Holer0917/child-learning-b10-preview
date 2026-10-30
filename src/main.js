@@ -7,7 +7,7 @@
  *   3. 注册路由并挂载
  */
 
-import { migrate, isAvailable } from './core/storage.js';
+import { migrate, isAvailable, read, recoverTransaction } from './core/storage.js';
 import { ensureProfile, getActiveProfile } from './domain/profile.js';
 import { start, register, registerFallback } from './core/router.js';
 import { renderHome } from './ui/pages/home.js';
@@ -20,6 +20,9 @@ import { renderStats } from './ui/pages/stats.js';
 import { el } from './utils/dom.js';
 import { installKeyboardSupport } from './utils/accessibility.js';
 import { initPwa } from './app/pwa.js';
+import { renderProfiles } from './ui/pages/profiles.js';
+import { renderSettings } from './ui/pages/settings.js';
+import { bus, EVENTS } from './core/bus.js';
 
 function boot() {
   installKeyboardSupport();
@@ -27,10 +30,17 @@ function boot() {
   const header = document.getElementById('topbar');
 
   // 1. 迁移 + 建档
+  const recovery = recoverTransaction();
+  if (!recovery.ok) {
+    mount.replaceChildren(el('section', { class: 'card' }, [el('h1', { text: '需要恢复本地数据', tabindex: -1 }),
+      el('p', { role: 'alert', text: '上次操作未完成，原数据仍保留在恢复日志中。请释放存储空间或恢复浏览器存储权限后重试。' }),
+      el('button', { class: 'btn', text: '重试数据恢复', onclick: () => location.reload() })]));
+    mount.querySelector('h1').focus(); return;
+  }
   migrate();
-  ensureProfile();
+  if (read('profiles', null) === null) ensureProfile();
 
-  // 2. 顶栏：档案信息（切换功能后续补）
+  // 2. 顶栏保留现有导航，新增档案与数据管理入口。
   const profile = getActiveProfile();
   header.replaceChildren(
     el('a', { class: 'brand', href: '#/home', 'aria-label': '口算小达人首页' }, [
@@ -40,15 +50,24 @@ function boot() {
       el('a', { class: 'nav-link', href: '#/home', text: '开始' }),
       el('a', { class: 'nav-link', href: '#/practice', text: '出题练习' }),
       el('a', { class: 'nav-link', href: '#/history', text: '成绩历史' }),
-      el('a', { class: 'nav-link', href: '#/mistakes', text: '错题本' })
+      el('a', { class: 'nav-link', href: '#/mistakes', text: '错题本' }),
+      el('a', { class: 'nav-link', href: '#/profiles', text: '档案' }),
+      el('a', { class: 'nav-link', href: '#/settings', text: '数据管理' })
     ]),
-    el('div', { class: 'profile-chip' }, [
+    el('a', { class: 'profile-chip', href: '#/profiles', 'aria-label': '打开学习档案' }, [
+      el('span', { class: 'profile-avatar-small', 'aria-hidden': 'true', text: profile?.avatar ?? '👤' }),
       el('span', { class: 'profile-copy' }, [
-        el('span', { text: profile?.name ?? '小朋友' }),
-        el('span', { class: 'grade-tag', text: `${profile?.grade ?? 1} 年级学习档案` })
+        el('span', { text: profile?.name ?? '新建档案' }),
+        el('span', { class: 'grade-tag', text: profile ? `${profile.grade} 年级学习档案` : '尚未创建学习档案' })
       ])
     ])
   );
+  bus.on(EVENTS.PROFILE_CHANGED, () => {
+    const p = getActiveProfile();
+    header.querySelector('.profile-copy span').textContent = p?.name ?? '新建档案';
+    header.querySelector('.grade-tag').textContent = p ? `${p.grade} 年级学习档案` : '尚未创建学习档案';
+    header.querySelector('.profile-avatar-small').textContent = p?.avatar ?? '👤';
+  });
 
   const updateNavigation = () => {
     const path = window.location.hash.split('?')[0];
@@ -68,12 +87,21 @@ function boot() {
 
   // 4. 路由
   register('/home', renderHome, '开始');
-  register('/practice', renderPractice, '出题');
+  const withProfile = render => (root, ctx) => {
+    if (!getActiveProfile()) {
+      root.replaceChildren(el('section', { class: 'card' }, [el('h1', { text: '先创建学习档案' }),
+        el('a', { class: 'btn', href: '#/profiles', text: '创建学习档案' })])); return;
+    }
+    return render(root, ctx);
+  };
+  register('/practice', withProfile(renderPractice), '出题');
   register('/history', renderHistory, '成绩历史');
   register('/mistakes', renderMistakes, '错题本');
   register('/stats', renderStats, '学习统计');
-  register('/quiz', renderQuiz, '答题');
+  register('/quiz', withProfile(renderQuiz), '答题');
   register('/result', renderResult, '成绩');
+  register('/profiles', renderProfiles, '学习档案');
+  register('/settings', renderSettings, '数据管理');
   registerFallback((root, ctx) => {
     root.replaceChildren(
       el('p', { class: 'empty', text: `页面不存在：${ctx.path}` }),

@@ -1,4 +1,5 @@
-import { read } from '../core/storage.js';
+import { read, atomicChange } from '../core/storage.js';
+import { bus, EVENTS } from '../core/bus.js';
 import { getActiveProfile } from './profile.js';
 import { gradeOf } from './grader.js';
 
@@ -36,4 +37,36 @@ export function summarizeHistory(records) {
   const total = records.reduce((sum, r) => sum + r.total, 0);
   const correct = records.reduce((sum, r) => sum + r.correct, 0);
   return { count: records.length, total, accuracy: total ? Math.round(correct / total * 1000) / 10 : null };
+}
+
+export function deleteHistoryRecord(id, profileId = getActiveProfile()?.id) {
+  if (!id || !profileId) return false;
+  const stored = read(`sessions:${profileId}`, []);
+  if (!Array.isArray(stored) || !stored.some(r => r?.id === id)) return false;
+  const changes = { [`sessions:${profileId}`]: stored.filter(r => r?.id !== id) };
+  if (read(`quiz:result:${profileId}`, null)?.id === id) changes[`quiz:result:${profileId}`] = null;
+  const result = atomicChange(changes);
+  if (result.ok) bus.emit(EVENTS.PROFILE_CHANGED, { profileId, historyDeleted: id });
+  return result.ok;
+}
+export function filterHistory(records, { kpId = '', from = '', to = '' } = {}) {
+  if (from && to && from > to) return [];
+  const first = from ? new Date(from + 'T00:00:00').getTime() : -Infinity;
+  const last = to ? new Date(to + 'T23:59:59.999').getTime() : Infinity;
+  return records.filter(r => r.finishedAt >= first && r.finishedAt <= last
+    && (!kpId || Object.hasOwn(r.kpCount ?? {}, kpId) || r.paper?.questions?.some(q => q.kpId === kpId)));
+}
+/** 结算和合并共享500明细+2000摘要规则，保留首次统计，不重新判分。 */
+export function retainHistory(records) {
+  return records.slice().sort((a, b) => b.finishedAt - a.finishedAt || b.id.localeCompare(a.id)).slice(0, 2500).map((r, i) => {
+    if (i < 500 || r.compressed) return r;
+    const kpCount = {}, kpCorrect = {}, kpAnswered = {};
+    for (const q of r.paper?.questions ?? []) kpCount[q.kpId] = (kpCount[q.kpId] ?? 0) + 1;
+    for (const a of r.detail ?? []) {
+      if (!a.skipped) kpAnswered[a.kpId] = (kpAnswered[a.kpId] ?? 0) + 1;
+      if (a.correct) kpCorrect[a.kpId] = (kpCorrect[a.kpId] ?? 0) + 1;
+    }
+    const { paper, detail, wrongList, ...summary } = r;
+    return { ...summary, paper: null, detail: [], wrongList: [], kpCount, kpCorrect, kpAnswered, compressed: true };
+  });
 }

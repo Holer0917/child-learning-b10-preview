@@ -13,6 +13,8 @@ import { bus, EVENTS } from './bus.js';
 
 const PREFIX = 'km-preview-b10:';
 const CURRENT_VERSION = 1;
+const JOURNAL = '__transaction__';
+let recoveryView = null;
 
 /* ------------------------------------------------------------------ *
  * 可用性探测
@@ -50,8 +52,9 @@ const memory = new Map();
 export function read(key, fallback = null) {
   let raw = null;
   try {
+    const view = isAvailable() ? journalView() : null;
     raw = isAvailable()
-      ? localStorage.getItem(PREFIX + key)
+      ? (view?.has(key) ? view.get(key) : localStorage.getItem(PREFIX + key))
       : (memory.get(key) ?? null);
   } catch {
     return fallback;
@@ -74,6 +77,7 @@ export function read(key, fallback = null) {
 export function write(key, value) {
   let raw;
   try {
+    if (isAvailable() && localStorage.getItem(PREFIX + JOURNAL) !== null) return false;
     raw = JSON.stringify(value);
   } catch (err) {
     console.error('[storage] 序列化失败：', err);
@@ -101,13 +105,94 @@ export function write(key, value) {
 /** 删除单个键 */
 export function remove(key) {
   try {
+    if (isAvailable() && localStorage.getItem(PREFIX + JOURNAL) !== null) return false;
     if (isAvailable()) localStorage.removeItem(PREFIX + key);
     else memory.delete(key);
-  } catch { /* 忽略 */ }
+    return true;
+  } catch {
+    bus.emit(EVENTS.STORAGE_ERROR, { reason: 'remove', key });
+    return false;
+  }
+}
+
+/** 导入/级联删除的撤销日志。只有删除日志成功才算提交；异常保留原值供恢复。 */
+function decodeJournal(raw) {
+  const j = JSON.parse(raw);
+  if (j?.version !== 1 || !Array.isArray(j.before) || j.before.length > 100
+      || j.before.some(x => !Array.isArray(x) || x.length !== 2 || typeof x[0] !== 'string'
+        || !x[0] || x[0].length > 200 || x[0] === JOURNAL || !(x[1] === null || typeof x[1] === 'string'))
+      || new Set(j.before.map(x => x[0])).size !== j.before.length) throw new Error('invalid-journal');
+  return new Map(j.before);
+}
+function journalView() {
+  const raw = localStorage.getItem(PREFIX + JOURNAL);
+  if (raw === null) { recoveryView = null; return null; }
+  try { return recoveryView = decodeJournal(raw); } catch { return recoveryView; }
+}
+function restore(view) {
+  // 日志已完整保存原值；先释放本次变动的空间，确保旧值恢复不被新值挤占。
+  for (const key of view.keys()) localStorage.removeItem(PREFIX + key);
+  for (const [key, raw] of view) {
+    if (raw === null) localStorage.removeItem(PREFIX + key);
+    else localStorage.setItem(PREFIX + key, raw);
+  }
+  for (const [key, raw] of view) if (localStorage.getItem(PREFIX + key) !== raw) throw new Error('restore-failed');
+  localStorage.removeItem(PREFIX + JOURNAL);
+  if (localStorage.getItem(PREFIX + JOURNAL) !== null) throw new Error('journal-remove-failed');
+  recoveryView = null;
+}
+export function recoverTransaction() {
+  if (!isAvailable()) return { ok: true, durable: false };
+  try {
+    const raw = localStorage.getItem(PREFIX + JOURNAL);
+    if (raw === null) { recoveryView = null; return { ok: true }; }
+    recoveryView = decodeJournal(raw);
+    restore(recoveryView);
+    return { ok: true, recovered: true };
+  } catch {
+    return { ok: false, code: 'RECOVERY_REQUIRED' };
+  }
+}
+/** changes 的 null 表示删除；其余值序列化后一次性准备。不会先清空现有数据。 */
+export function atomicChange(changes) {
+  const entries = Object.entries(changes);
+  if (entries.length > 100 || entries.some(([k]) => !k || k.length > 200 || k === JOURNAL)) return { ok: false, code: 'INVALID_CHANGES' };
+  let encoded;
+  try { encoded = entries.map(([k, v]) => [k, v === null ? null : JSON.stringify(v)]);
+    if (encoded.some(([, v]) => v === undefined)) throw new Error('invalid-value');
+  } catch { return { ok: false, code: 'INVALID_CHANGES' }; }
+  if (!isAvailable()) {
+    for (const [key, raw] of encoded) if (raw === null) memory.delete(key); else memory.set(key, raw);
+    bus.emit(EVENTS.DATA_CHANGED, { keys: entries.map(([k]) => k) });
+    return { ok: true, durable: false };
+  }
+  let before;
+  try {
+    if (localStorage.getItem(PREFIX + JOURNAL) !== null) return { ok: false, code: 'RECOVERY_REQUIRED' };
+    before = new Map(encoded.map(([key]) => [key, localStorage.getItem(PREFIX + key)]));
+    localStorage.setItem(PREFIX + JOURNAL, JSON.stringify({ version: 1, before: [...before] }));
+  } catch { return { ok: false, code: 'STAGING_FAILED', recovered: true }; }
+  recoveryView = before;
+  try {
+    for (const [key, raw] of encoded) {
+      if (raw === null) localStorage.removeItem(PREFIX + key);
+      else localStorage.setItem(PREFIX + key, raw);
+    }
+    for (const [key, raw] of encoded) if (localStorage.getItem(PREFIX + key) !== raw) throw new Error('write-failed');
+    localStorage.removeItem(PREFIX + JOURNAL);
+    if (localStorage.getItem(PREFIX + JOURNAL) !== null) throw new Error('commit-failed');
+    recoveryView = null;
+  } catch {
+    try { restore(before); return { ok: false, code: 'WRITE_FAILED', recovered: true }; }
+    catch { return { ok: false, code: 'RECOVERY_REQUIRED', recovered: false }; }
+  }
+  bus.emit(EVENTS.DATA_CHANGED, { keys: entries.map(([k]) => k) });
+  return { ok: true, durable: true };
 }
 
 /** 清空本应用的全部键（不触碰同域下其它应用的数据） */
 export function clearAll() {
+  if (isAvailable() && localStorage.getItem(PREFIX + JOURNAL) !== null) return false;
   if (isAvailable()) {
     const doomed = [];
     for (let i = 0; i < localStorage.length; i++) {
@@ -125,9 +210,11 @@ export function keys() {
   const out = [];
   for (let i = 0; i < localStorage.length; i++) {
     const k = localStorage.key(i);
-    if (k && k.startsWith(PREFIX)) out.push(k.slice(PREFIX.length));
+    if (k && k.startsWith(PREFIX) && k !== PREFIX + JOURNAL) out.push(k.slice(PREFIX.length));
   }
-  return out;
+  const view = journalView(), result = new Set(out);
+  for (const [key, raw] of view ?? []) if (raw === null) result.delete(key); else result.add(key);
+  return [...result];
 }
 
 /** 估算已用字节数 */
@@ -157,6 +244,7 @@ export function usedBytes() {
 function handleCorruption(key, raw, err) {
   console.error(`[storage] 键 "${key}" 数据损坏：`, err);
   try {
+    if (isAvailable() && localStorage.getItem(PREFIX + JOURNAL) !== null) return;
     if (isAvailable()) {
       localStorage.setItem(`${PREFIX}__corrupt__${key}`,
         JSON.stringify({ at: Date.now(), raw: String(raw).slice(0, 10000) }));
@@ -225,4 +313,5 @@ export function migrate() {
 export function __resetForTest() {
   available = null;
   memory.clear();
+  recoveryView = null;
 }

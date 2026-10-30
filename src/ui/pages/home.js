@@ -3,6 +3,7 @@ import { listHistory } from '../../domain/history.js';
 import { resumeSession } from '../../app/quizSession.js';
 import { formatDate } from '../../utils/date.js';
 import { formatAccuracy } from '../../utils/format.js';
+import { getActiveProfile } from '../../domain/profile.js';
 
 /** 学习开始页，只展示真实数据与入口。 */
 export function renderHome(root) {
@@ -18,6 +19,8 @@ export function renderHome(root) {
       el('h1', { text: '开始' }),
       el('p', { class: 'muted', text: '选择出题练习、查看成绩历史或打开错题本。' })
     ]),
+    !getActiveProfile() ? el('section', { class: 'card' }, [el('h2', { text: '先创建学习档案' }),
+      el('a', { class: 'btn', href: '#/profiles', text: '创建学习档案' })]) : null,
     active ? el('section', { class: 'card resume-card' }, [
       el('div', {}, [el('h2', { class: 'card-title', text: '有一份未完成的练习' }),
         el('p', { class: 'card-description', text: `第 ${active.cursor + 1} / 共 ${active.paper.questions.length} 题，进度已暂存。` })]),

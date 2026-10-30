@@ -1,40 +1,48 @@
-/**
- * 档案服务
- *
- * 一个"档案"就是一个孩子的独立数据空间。
- * 所有业务数据（练习记录、错题、徽章）都挂在某个档案下，
- * 切换档案 = 切换数据空间，互不干扰。
- */
-
-import { read, write, remove } from '../core/storage.js';
+/** 学习档案：最多3个，跨键变更使用可恢复事务。 */
+import { read, write, atomicChange } from '../core/storage.js';
 import { bus, EVENTS } from '../core/bus.js';
 import { makeId } from '../utils/random.js';
 
 const KEY_PROFILES = 'profiles';
 const KEY_ACTIVE = 'active';
 
-/** 可选头像（用 emoji，零资源开销） */
 export const AVATARS = ['🦊', '🐼', '🐯', '🐰', '🐨', '🐸', '🦁', '🐧', '🐢', '🦄'];
 
-/**
- * @typedef {Object} Profile
- * @property {string} id
- * @property {string} name
- * @property {1|2|3}  grade
- * @property {string} avatar
- * @property {number} createdAt
- */
+export const MAX_PROFILES = 3;
 
-/* ------------------------------------------------------------------ *
- * 查询
- * ------------------------------------------------------------------ */
+export const PARTITION_KEY_TEMPLATES = [
+  (pid) => `sessions:${pid}`,
+  (pid) => `quiz:active:${pid}`,
+  (pid) => `quiz:result:${pid}`,
+  (pid) => `mistakes:${pid}`,
+  (pid) => `stats:${pid}`,
+  (pid) => `badges:${pid}`,
+  (pid) => `data:${pid}` // 旧键，保留清理兼容
+];
 
-/** @returns {Profile[]} */
-export function listProfiles() {
-  return read(KEY_PROFILES, []);
+export function isValidProfileName(name) {
+  return typeof name === 'string' && name.trim().length >= 1 && name.trim().length <= 12;
 }
 
-/** @returns {Profile|null} */
+export function validateProfileInput({ name, grade, avatar } = {}) {
+  const errors = [];
+  if (name != null && (typeof name !== 'string' || (name.trim() && !isValidProfileName(name)))) {
+    errors.push({ field: 'name', message: '昵称需为 1~12 个字符，不能为空。' });
+  }
+  if (grade != null && ![1, 2, 3].includes(grade)) {
+    errors.push({ field: 'grade', message: '年级只能是 1、2 或 3。' });
+  }
+  if (avatar != null && !AVATARS.includes(avatar)) {
+    errors.push({ field: 'avatar', message: '请选择提供的头像。' });
+  }
+  return errors;
+}
+
+export function listProfiles() {
+  const raw = read(KEY_PROFILES, []);
+  return Array.isArray(raw) ? raw : [];
+}
+
 export function getActiveProfile() {
   const profiles = listProfiles();
   if (profiles.length === 0) return null;
@@ -43,22 +51,22 @@ export function getActiveProfile() {
   return profiles.find((p) => p.id === id) ?? profiles[0];
 }
 
-/** @returns {Profile|null} */
 export function getProfile(id) {
   return listProfiles().find((p) => p.id === id) ?? null;
 }
 
-/* ------------------------------------------------------------------ *
- * 写操作
- * ------------------------------------------------------------------ */
+export function hasActiveSession(profileId) {
+  return read(`quiz:active:${profileId}`, null) != null;
+}
 
-/**
- * 创建档案
- * @param {{name?:string, grade?:1|2|3, avatar?:string}} opts
- * @returns {Profile}
- */
 export function createProfile({ name, grade = 1, avatar } = {}) {
   const profiles = listProfiles();
+  if (profiles.length >= MAX_PROFILES) {
+    throw new Error('最多只能创建 3 个学习档案，请先删除一个再创建。');
+  }
+
+  const errors = validateProfileInput({ name, grade, avatar });
+  if (errors.length > 0) throw new Error(errors[0].message);
 
   const profile = {
     id: makeId('u'),
@@ -69,107 +77,79 @@ export function createProfile({ name, grade = 1, avatar } = {}) {
   };
 
   profiles.push(profile);
-  write(KEY_PROFILES, profiles);
-
-  // 首个档案自动设为当前档案
-  if (profiles.length === 1) write(KEY_ACTIVE, profile.id);
+  const saved = atomicChange({ [KEY_PROFILES]: profiles, ...(profiles.length === 1 ? { [KEY_ACTIVE]: profile.id } : {}) });
+  if (!saved.ok) throw new Error('档案未保存，请检查存储空间或先重试数据恢复。');
 
   bus.emit(EVENTS.PROFILE_CHANGED, { profileId: profile.id, created: true });
   return profile;
 }
 
-/**
- * 局部更新档案
- * @param {string} id
- * @param {Partial<Profile>} patch
- */
 export function updateProfile(id, patch = {}) {
   const profiles = listProfiles();
   const idx = profiles.findIndex((p) => p.id === id);
   if (idx < 0) return null;
 
+  const errors = validateProfileInput(patch);
+  if (errors.length > 0) throw new Error(errors[0].message);
+
   const next = { ...profiles[idx] };
-  if (patch.name != null) next.name = String(patch.name).trim() || next.name;
-  if (patch.grade != null && [1, 2, 3].includes(Number(patch.grade))) {
-    next.grade = Number(patch.grade);
-  }
+  if (patch.name != null) next.name = String(patch.name).trim() || '小朋友';
+  if (patch.grade != null) next.grade = Number(patch.grade);
   if (patch.avatar != null) next.avatar = patch.avatar;
 
   profiles[idx] = next;
-  write(KEY_PROFILES, profiles);
+  const ok = write(KEY_PROFILES, profiles);
+  if (!ok) throw new Error('保存失败，请检查浏览器存储空间。');
+
   bus.emit(EVENTS.PROFILE_CHANGED, { profileId: id, updated: true });
   return next;
 }
 
-/**
- * 切换当前档案
- */
 export function switchProfile(id) {
   const profile = getProfile(id);
   if (!profile) return null;
 
-  write(KEY_ACTIVE, id);
+  const ok = write(KEY_ACTIVE, id);
+  if (!ok) throw new Error('切换失败，请检查浏览器存储状态。');
+
   bus.emit(EVENTS.PROFILE_CHANGED, { profileId: id });
   return profile;
 }
 
-/**
- * 删除档案及其全部关联数据（级联删除）
- * @returns {{removed:boolean, next:Profile|null}}
- */
 export function removeProfile(id) {
   const profiles = listProfiles();
   const target = profiles.find((p) => p.id === id);
   if (!target) return { removed: false, next: getActiveProfile() };
 
   const rest = profiles.filter((p) => p.id !== id);
-  write(KEY_PROFILES, rest);
-
-  // 级联删除该档案的业务数据
-  removeProfileData(id);
-
-  // 若删除的是当前档案，自动切到剩余档案中的第一个
-  const activeId = read(KEY_ACTIVE, null);
-  if (activeId === id) {
-    const next = rest[0] ?? null;
-    if (next) write(KEY_ACTIVE, next.id);
-    else write(KEY_ACTIVE, null);
-  }
-
-  bus.emit(EVENTS.PROFILE_CHANGED, { profileId: id, removed: true });
-  return { removed: true, next: getActiveProfile() };
+  const activeId = getActiveProfile()?.id;
+  const next = activeId === id ? rest[0] ?? null : rest.find(p => p.id === activeId) ?? rest[0] ?? null;
+  const changes = Object.fromEntries(PARTITION_KEY_TEMPLATES.map(fn => [fn(id), null]));
+  Object.assign(changes, { [KEY_PROFILES]: rest, [KEY_ACTIVE]: next?.id ?? null });
+  const saved = atomicChange(changes);
+  if (!saved.ok) throw new Error(saved.recovered === false ? '删除未完成，原数据已保留在恢复日志中，请先重试数据恢复。' : '删除失败，原档案与数据已保留。');
+  bus.emit(EVENTS.PROFILE_CHANGED, { profileId: id, removed: true, next: next?.id ?? null });
+  return { removed: true, next };
 }
 
-/** 删除该档案的业务数据键 */
-function removeProfileData(profileId) {
-  remove(`data:${profileId}`);
+export function removeProfileData(profileId) {
+  return atomicChange(Object.fromEntries(PARTITION_KEY_TEMPLATES.map(fn => [fn(profileId), null])));
 }
 
-/* ------------------------------------------------------------------ *
- * 便捷方法
- * ------------------------------------------------------------------ */
-
-/** 当前档案的年级（无档案时返回 1） */
 export function activeGrade() {
   return getActiveProfile()?.grade ?? 1;
 }
 
-/** 是否已有档案 */
 export function hasProfile() {
   return listProfiles().length > 0;
 }
 
-/** 确保存在至少一个档案；没有则自动创建一个默认档案 */
 export function ensureProfile() {
   const existing = getActiveProfile();
   if (existing) return existing;
   return createProfile({ name: '小朋友', grade: 1 });
 }
 
-/** 档案数量上限（对应 NFR-09 第 1 条） */
-export const MAX_PROFILES = 3;
-
-/** 是否还能新建档案 */
 export function canCreateProfile() {
   return listProfiles().length < MAX_PROFILES;
 }

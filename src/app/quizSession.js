@@ -6,11 +6,22 @@ import { makeId } from '../utils/random.js';
 import { getKnowledgePoint } from '../domain/syllabus.js';
 import { archiveSession } from '../domain/mistakes.js';
 import { updateAwards } from '../domain/stats.js';
+import { bus, EVENTS } from '../core/bus.js';
+import { retainHistory } from '../domain/history.js';
 
 const volatile = new Map();
 const copy = (v) => JSON.parse(JSON.stringify(v));
 const activeKey = (id) => `quiz:active:${id}`;
 let lastSaved = true;
+
+bus.on(EVENTS.PROFILE_CHANGED, event => {
+  if (event.imported) { volatile.clear(); lastSaved = true; }
+  else if (event.removed) {
+    volatile.delete(activeKey(event.profileId));
+    volatile.delete(`result:${event.profileId}`);
+  }
+  else if (event.historyDeleted && volatile.get(`result:${event.profileId}`)?.id === event.historyDeleted) volatile.delete(`result:${event.profileId}`);
+});
 
 export function savedDurably() { return lastSaved && isAvailable(); }
 
@@ -130,18 +141,8 @@ export function finishSession(reason = 'completed') {
   const stored = read(key, []);
   const records = Array.isArray(stored) ? stored.filter(r => r.id !== s.id) : [];
   records.unshift(result);
-  // 第 501 条起保留统计摘要；历史页在后续步骤实现。
-  const retained = records.slice(0, 2500).map((r, i) => {
-    if (i < 500 || r.compressed) return r;
-    const kpCount = {}, kpCorrect = {}, kpAnswered = {};
-    for (const q of r.paper?.questions ?? []) kpCount[q.kpId] = (kpCount[q.kpId] ?? 0) + 1;
-    for (const a of r.detail ?? []) {
-      if (!a.skipped) kpAnswered[a.kpId] = (kpAnswered[a.kpId] ?? 0) + 1;
-      if (a.correct) kpCorrect[a.kpId] = (kpCorrect[a.kpId] ?? 0) + 1;
-    }
-    const { paper, detail, wrongList, ...summary } = r;
-    return { ...summary, paper: null, detail: [], wrongList: [], kpCount, kpCorrect, kpAnswered, compressed: true };
-  });
+  // 第 501 条起保留统计摘要，合计最多 2500 条。
+  const retained = retainHistory(records);
   const recordSaved = write(key, retained);
   // 成绩先保存为恢复来源；错题写入失败可在成绩页/错题本回补，不回滚或重复追加成绩。
   const archive = recordSaved ? archiveSession(result) : { ok: false, code: 'HISTORY_NOT_SAVED' };

@@ -1,6 +1,7 @@
 const object = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 const time = (v) => Number.isSafeInteger(v) && v >= 0;
 const text = (v, max = 200) => typeof v === 'string' && v.length <= max;
+export { inspectBackupPayload, validateBackupPayload } from './backupSchema.js';
 
 /** 恢复前验证结构；不执行存储中的任何表达式或 HTML。 */
 export function validatePaper(paper, isKnownPoint) {
