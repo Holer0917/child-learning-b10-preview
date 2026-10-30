@@ -19,13 +19,18 @@ export function validatePaper(paper, isKnownPoint) {
 
 export function validateActiveSession(s, profileId, now, isKnownPoint) {
   if (!object(s) || s.schemaVersion !== 1 || !text(s.id) || !s.id
-      || s.profileId !== profileId || s.mode !== 'practice' || !validatePaper(s.paper, isKnownPoint)
+      || s.profileId !== profileId || !['practice', 'retry', 'variant'].includes(s.mode) || !validatePaper(s.paper, isKnownPoint)
       || !time(s.startAt) || !time(s.savedAt) || s.startAt > s.savedAt || s.savedAt > now
       || now - s.savedAt > 86400000 || !time(s.questionAt) || s.questionAt > s.savedAt
       || s.questionAt < s.startAt || !Number.isInteger(s.cursor) || s.cursor < 0
       || s.cursor >= s.paper.questions.length || !text(s.draft, 40)
       || !(s.limitMs === null || (Number.isInteger(s.limitMs) && s.limitMs >= 60000 && s.limitMs <= 3600000))
       || !object(s.attempts) || !object(s.retries)) return false;
+  if ((s.mode === 'retry' && !s.paper.retry) || (s.mode === 'variant' && !s.paper.variant)) return false;
+  for (const field of ['sourceMistakeIds', 'variantRemainingIds', 'variantPreviousKeys']) {
+    if (s.paper[field] !== undefined && (!Array.isArray(s.paper[field]) || s.paper[field].length > 500
+        || !s.paper[field].every(v => typeof v === 'string' && v.length <= 500))) return false;
+  }
   const ids = new Set(s.paper.questions.map(q => q.id));
   const validAttempt = (a, first) => object(a) && text(a.userAnswer, 40)
     && typeof a.correct === 'boolean' && typeof a.skipped === 'boolean'

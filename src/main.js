@@ -16,6 +16,7 @@ import { renderHistory } from './ui/pages/history.js';
 import { renderMistakes } from './ui/pages/mistakes.js';
 import { renderQuiz } from './ui/pages/quiz.js';
 import { renderResult } from './ui/pages/result.js';
+import { renderStats } from './ui/pages/stats.js';
 import { el } from './utils/dom.js';
 import { installKeyboardSupport } from './utils/accessibility.js';
 import { initPwa } from './app/pwa.js';
@@ -70,6 +71,7 @@ function boot() {
   register('/practice', renderPractice, '出题');
   register('/history', renderHistory, '成绩历史');
   register('/mistakes', renderMistakes, '错题本');
+  register('/stats', renderStats, '学习统计');
   register('/quiz', renderQuiz, '答题');
   register('/result', renderResult, '成绩');
   registerFallback((root, ctx) => {

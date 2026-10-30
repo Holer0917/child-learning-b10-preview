@@ -4,6 +4,8 @@ import { getActiveProfile } from '../domain/profile.js';
 import { judgeAnswer, settleSession } from '../domain/grader.js';
 import { makeId } from '../utils/random.js';
 import { getKnowledgePoint } from '../domain/syllabus.js';
+import { archiveSession } from '../domain/mistakes.js';
+import { updateAwards } from '../domain/stats.js';
 
 const volatile = new Map();
 const copy = (v) => JSON.parse(JSON.stringify(v));
@@ -48,7 +50,7 @@ export function createSession(paper, { limitMs = null } = {}) {
   }
   const now = Date.now();
   return copy(persist({ schemaVersion: 1, id: makeId('s'), profileId: pid,
-    mode: 'practice', paper: copy(paper), attempts: {}, retries: {}, cursor: 0,
+    mode: paper.retry ? 'retry' : paper.variant ? 'variant' : 'practice', paper: copy(paper), attempts: {}, retries: {}, cursor: 0,
     startAt: now, questionAt: now, savedAt: now, limitMs, draft: '' }));
 }
 
@@ -123,7 +125,7 @@ export function finishSession(reason = 'completed') {
   // 主动退出且零作答不产生成绩；超时仍展示全卷的未作答情况。
   if (!answered && reason === 'exit') { discardSession(); return null; }
   const result = { ...settleSession(s.paper, s.attempts, elapsedMs(s)),
-    id: s.id, profileId: s.profileId, answered, reason, compressed: false };
+    id: s.id, profileId: s.profileId, mode: s.mode, answered, reason, compressed: false };
   const key = `sessions:${s.profileId}`;
   const stored = read(key, []);
   const records = Array.isArray(stored) ? stored.filter(r => r.id !== s.id) : [];
@@ -141,6 +143,11 @@ export function finishSession(reason = 'completed') {
     return { ...summary, paper: null, detail: [], wrongList: [], kpCount, kpCorrect, kpAnswered, compressed: true };
   });
   const recordSaved = write(key, retained);
+  // 成绩先保存为恢复来源；错题写入失败可在成绩页/错题本回补，不回滚或重复追加成绩。
+  const archive = recordSaved ? archiveSession(result) : { ok: false, code: 'HISTORY_NOT_SAVED' };
+  result.mistakesSaved = archive.ok;
+  result.mistakeError = archive.ok ? null : archive.code;
+  result.awardsSaved = recordSaved ? updateAwards(s.profileId) : false;
   result.saved = recordSaved && isAvailable();
   volatile.set(`result:${s.profileId}`, result);
   const resultSaved = write(`quiz:result:${s.profileId}`, result);

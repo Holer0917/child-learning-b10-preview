@@ -1,18 +1,19 @@
 /* 每次发布修改缓存资源时必须递增 VERSION；此脚本不缓存用户数据。 */
-const VERSION = 'b10-preview-3';
+const VERSION = 'ab-preview-1';
 const BASE = new URL('./', self.location.href);
 const PREFIX = `kidsmath-shell:${BASE.pathname}:`;
 const CACHE_NAME = PREFIX + VERSION;
 const ASSETS = [
   'index.html', 'manifest.webmanifest',
   'assets/css/base.css', 'assets/icons/app-192.png', 'assets/icons/app-512.png', 'assets/icons/apple-touch-icon.png',
-  'src/main.js', 'src/app/pwa.js', 'src/app/quizSession.js',
+  'src/main.js', 'src/app/pwa.js', 'src/app/quizSession.js', 'src/app/mistakePractice.js',
   'src/core/bus.js', 'src/core/router.js', 'src/core/schema.js', 'src/core/storage.js',
   'src/domain/generator.js', 'src/domain/grader.js', 'src/domain/history.js', 'src/domain/paper.js',
   'src/domain/profile.js', 'src/domain/syllabus.js',
+  'src/domain/mistakes.js', 'src/domain/variants.js', 'src/domain/stats.js',
   'src/ui/components/icon.js', 'src/ui/components/keypad.js', 'src/ui/components/feedback.js',
   'src/ui/pages/home.js', 'src/ui/pages/practice.js', 'src/ui/pages/quiz.js',
-  'src/ui/pages/result.js', 'src/ui/pages/history.js', 'src/ui/pages/mistakes.js',
+  'src/ui/pages/result.js', 'src/ui/pages/history.js', 'src/ui/pages/mistakes.js', 'src/ui/pages/stats.js',
   'src/utils/accessibility.js', 'src/utils/date.js', 'src/utils/dom.js', 'src/utils/format.js', 'src/utils/random.js'
 ].map(path => new URL(path, BASE).href);
 const ASSET_SET = new Set(ASSETS);

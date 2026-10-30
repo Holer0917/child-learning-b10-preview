@@ -7,6 +7,8 @@ import { mountKeypad } from '../components/keypad.js';
 import { icon } from '../components/icon.js';
 import { focusElement } from '../../utils/accessibility.js';
 import { consecutiveCorrect, createAnswerFeedback } from '../components/feedback.js';
+import { readStore, mistakeKeyOf } from '../../domain/mistakes.js';
+import { startMistakePractice } from '../../app/mistakePractice.js';
 
 export function renderQuiz(root, ctx) {
   let autoNext = null, ticker = null, disposed = false, retrying = false;
@@ -143,6 +145,17 @@ export function renderQuiz(root, ctx) {
         text: s.cursor === s.paper.questions.length - 1 ? '查看成绩' : '下一题', onclick: next }),
       first && !first.correct && !first.skipped && !correction ? el('button', {
         id: 'retry-answer', class: 'btn', text: '再试一次', onclick: () => { retrying = true; draw(true); }
+      }) : null,
+      first && !first.correct && !first.skipped ? el('button', {
+        id: 'variant-from-answer', class: 'btn', text: '举一反三', onclick: () => {
+          if (!window.confirm('先结束并保存本次练习，再生成 5 道同类题？未答题记为未作答。')) return;
+          clearAuto(); clearInterval(ticker);
+          const result = finishSession('exit');
+          const m = readStore(s.profileId).items.find(m => m.key === mistakeKeyOf(q));
+          if (!m || result?.saved === false) { go('/result'); return; }
+          const started = startMistakePractice([m.id], { kind: 'variant' });
+          if (!started.ok) { go('/result'); }
+        }
       }) : null
     ];
     root.replaceChildren(el('section', { class: 'page quiz-page' }, [
@@ -175,6 +188,7 @@ export function renderQuiz(root, ctx) {
           : keypadMode === 'compare' ? '选择 <、= 或 >，再提交答案。'
             : keypadMode === 'remainder' ? '有余数时写成 9余2，点击“余”分开商和余数。'
               : keypadMode === 'decimal' ? '小数写成 3.5，点击“.”输入小数点。' : '输入答案，按回车或点击提交。' }),
+        q.difficultyNote ? el('p', { class: 'variant-note', text: q.difficultyNote }) : null,
         status, error]),
         el('div', { class: 'quiz-controls' }, [
         el('div', { class: 'keypad-caption' }, [icon('grid'), editing ? '敲下你的答案' : '每一步，都算进步']),

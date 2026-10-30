@@ -306,3 +306,96 @@ h2 { font-size: 19px; margin: 0 0 12px; }
 @media (pointer: coarse) and (max-height: 500px) and (min-width: 560px) {
   .quiz-card { grid-template-columns: minmax(0, 1fr) 220px; gap: 14px; }
 }
+
+/* ---- 错题本（A03/A04） ---- */
+.mistakes-page { max-width: 900px; margin: 0 auto; }
+.mistakes-overview { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.mistakes-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.mistake-kp-select { min-height: 44px; padding: 8px; border: 1px solid #aaa; border-radius: 3px; background: #fff; max-width: 100%; }
+.mistake-list { list-style: none; padding: 0; margin: 0; }
+.mistake-item { display: flex; gap: 12px; align-items: flex-start; padding: 14px 0; border-top: 1px solid var(--c-line); }
+.mistake-check { display: flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; cursor: pointer; }
+.mistake-check input { width: 20px; height: 20px; margin: 0; accent-color: #333; }
+.mistake-check input:disabled { cursor: not-allowed; }
+.mistake-copy { flex: 1; min-width: 0; }
+.mistake-question { font-size: 32px; margin: 0 0 6px; overflow-wrap: anywhere; }
+.mistake-meta { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--c-muted); }
+.mistake-kp { font-weight: 600; color: var(--c-text); }
+.mistake-tag { padding: 1px 8px; border: 1px solid var(--c-line); border-radius: 2px; font-size: 12px; }
+.mistake-tag.is-pending { border-color: var(--c-warn); color: var(--c-warn); }
+.mistakes-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
+.mistake-message { font-size: 14px; color: var(--c-ok); margin: 8px 0; }
+@media (max-width: 700px) {
+  .mistakes-overview { padding-inline: 8px; }
+  .mistake-question { font-size: 32px; }
+  .mistakes-actions { padding: 12px; }
+}
+/* ---- 错题本补充（A05/A06） ---- */
+.mistake-inline-actions { margin-top: 6px; display: flex; gap: 10px; }
+.mistake-master-btn { font-size: 13px; padding-inline: 4px; }
+.mistakes-buttons { display: flex; flex-direction: column; gap: 8px; }
+.mistake-cleanup { margin-top: 0; }
+.mistake-cleanup .link-btn { padding-inline: 0; }
+@media (max-width: 700px) {
+  .mistakes-buttons .btn { font-size: 13px; }
+}
+/* ---- 学习统计（A07/A08） ---- */
+.stats-page { max-width: 900px; margin: 0 auto; }
+.stats-trend-head { flex-wrap: wrap; gap: 12px; }
+.stats-chart-wrap { margin: 14px 0 4px; }
+.stats-chart { display: block; width: 100%; height: auto; }
+.chart-grid { stroke: #e4e4e4; stroke-width: 1; }
+.chart-tick { fill: #606060; font-size: 11px; }
+.chart-line { fill: none; stroke: #111; stroke-width: 2; }
+.chart-dot { fill: #111; }
+.chart-label { fill: #111; font-size: 12px; font-weight: 650; }
+.stats-table-toggle { margin-top: 6px; flex-wrap: wrap; gap: 8px; }
+.stats-table-wrap { margin-top: 10px; overflow-x: auto; }
+.stats-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.stats-table th, .stats-table td { padding: 8px 10px; border-bottom: 1px solid var(--c-line); text-align: left; }
+.stats-table th { font-weight: 650; }
+.mastery-groups { display: grid; gap: 18px; margin-top: 12px; }
+.mastery-group-title { display: flex; align-items: baseline; gap: 6px; margin: 0 0 8px; font-size: 15px; font-weight: 650; }
+.mastery-group.level-good .mastery-group-title { color: var(--c-ok); }
+.mastery-group.level-warn .mastery-group-title { color: var(--c-warn); }
+.mastery-group.level-weak .mastery-group-title { color: var(--c-danger); }
+.mastery-list { list-style: none; padding: 0; margin: 0; }
+.mastery-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 0; border-top: 1px solid var(--c-line); font-size: 14px; }
+.mastery-copy { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.mastery-name { overflow-wrap: anywhere; }
+.mastery-value { font-size: 18px; font-weight: 650; white-space: nowrap; }
+.mistakes-head-actions { margin-top: 8px; }
+.mistakes-head-actions .btn { max-width: 220px; }
+@media (max-width: 700px) {
+  .stats-trend-head { display: block; }
+  .stats-trend-head .chips { margin-top: 10px; }
+  .mastery-value { font-size: 16px; }
+}
+/* ---- A09 练习足迹与徽章 ---- */
+.stats-summary-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 12px 0; }
+.badge-list { list-style: none; padding: 0; margin: 10px 0 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.badge-item { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border: 1px dashed var(--c-line); border-radius: 3px; font-size: 14px; }
+.badge-item.is-earned { border-style: solid; border-color: #777; }
+.badge-name { font-weight: 650; }
+.badge-locked { margin-top: 16px; }
+.badge-locked-title { font-size: 14px; font-weight: 650; margin: 0 0 4px; color: var(--c-muted); }
+.mistake-group + .mistake-group { margin-top: 24px; }
+.mistake-group .card-title { margin-top: 16px; }
+.mastery-entry { padding: 16px 0; border-top: 1px solid var(--c-line); }
+.mastery-entry .row-between { flex-wrap: wrap; gap: 8px; }
+.mastery-track { height: 14px; margin: 10px 0; border: 1px solid #555; background: #fff; }
+.mastery-fill { display: block; height: 100%; background: #333; }
+.mastery-entry.level-weak .mastery-fill { background: repeating-linear-gradient(45deg,#333 0 2px,#fff 2px 4px); }
+.mastery-entry.level-warn .mastery-fill { background: #777; }
+.priority-practice { margin: 16px 0; }
+.priority-practice ul { list-style: none; margin: 0; padding: 0; }
+.priority-practice a { display: block; padding: 10px 0; min-height: 44px; }
+.activity-calendar { display: grid; grid-template-columns: repeat(7,minmax(0,1fr)); gap: 4px; }
+.activity-day { border: 1px dashed #aaa; display: flex; flex-direction: column; align-items: center; padding: 6px 1px; font-size: 11px; }
+.activity-day.has-practice { border: 2px solid #333; padding: 5px 0; }
+.activity-day strong { font-size: 15px; }
+.variant-note { margin: 8px 0; }
+@media (max-width: 700px) {
+  .stats-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .badge-list { grid-template-columns: 1fr; }
+}

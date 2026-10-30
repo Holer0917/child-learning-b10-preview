@@ -45,7 +45,7 @@ const state = {
   limitMinutes: 0
 };
 
-export function renderPractice(root) {
+export function renderPractice(root, ctx) {
   const profile = getActiveProfile();
   state.grade = profile?.grade ?? 1;
   state.keyword = '';
@@ -55,6 +55,12 @@ export function renderPractice(root) {
   state.countFeedback = '';
   state.difficulty = 'normal';
   state.types = ['horizontal'];
+  const point = getKnowledgePoint(ctx?.query.get('kp'));
+  if (point) {
+    state.grade = point.grade;
+    state.kpIds = [point.id];
+    state.types = [point.types.includes('horizontal') ? 'horizontal' : point.types[0]];
+  }
   state.paper = null;
   state.originalPaperKeys = new Set();
   state.showAnswers = false;

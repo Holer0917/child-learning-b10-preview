@@ -5,6 +5,11 @@ import { getLastResult } from '../../app/quizSession.js';
 import { icon } from '../components/icon.js';
 import { getHistoryRecord } from '../../domain/history.js';
 import { formatDate } from '../../utils/date.js';
+import { getActiveProfile } from '../../domain/profile.js';
+import { syncMistakes, readStore, mistakeKeyOf } from '../../domain/mistakes.js';
+import { startMistakePractice, mistakeErrorText } from '../../app/mistakePractice.js';
+import { dedupeKey } from '../../domain/generator.js';
+import { updateAwards } from '../../domain/stats.js';
 
 export function renderResult(root, ctx) {
   const id = ctx?.query.get('id');
@@ -20,6 +25,20 @@ export function renderResult(root, ctx) {
   if (r.compressed) Object.assign(counts, r.kpCount ?? {});
   else for (const q of r.paper?.questions ?? []) counts[q.kpId] = (counts[q.kpId] ?? 0) + 1;
   const wrongList = Array.isArray(r.wrongList) ? r.wrongList : [];
+  const pid = getActiveProfile()?.id;
+  const archive = r.saved === false ? { ok: false, code: 'HISTORY_NOT_SAVED' } : syncMistakes(pid);
+  const awardsSaved = updateAwards(pid);
+  const mistakes = readStore(pid).items;
+  const begin = (ids, options) => {
+    const result = startMistakePractice(ids, options);
+    if (!result.ok) {
+      const error = root.querySelector('#result-action-error');
+      error.textContent = result.message ?? mistakeErrorText(result.code);
+      if (result.code === 'NO_VARIANTS') error.appendChild(el('button', { class: 'btn', text: '重练原题',
+        onclick: () => begin(ids, { kind: 'retry' }) }));
+    }
+  };
+  const previousKeys = (r.paper?.questions ?? []).map(q => dedupeKey(q, true));
   const perfect = r.total > 0 && r.correct === r.total && r.wrong === 0 && r.skipped === 0;
   const metric = (label, value) => el('div', { class: 'metric' }, [
     el('strong', { text: String(value) }), el('span', { text: label })
@@ -32,9 +51,14 @@ export function renderResult(root, ctx) {
       el('p', { class: 'muted', text: '成绩按每题首次作答计算，订正不会覆盖首次结果。' })
     ]),
     r.saved === false ? el('p', { class: 'alert', role: 'alert', text: '成绩未能完整保存到浏览器，请先保留本页。' }) : null,
+    !archive.ok ? el('div', { class: 'alert', role: 'alert' }, [
+      el('p', { text: `错题归档暂未完成：${mistakeErrorText(archive.code)}` }),
+      el('button', { class: 'btn', text: '重试错题归档', onclick: () => renderResult(root, ctx) }),
+      el('a', { class: 'btn', href: '#/mistakes', text: '打开错题本检查或清理' })]) : null,
+    !awardsSaved ? el('p', { class: 'alert', role: 'alert', text: '徽章日期暂未保存，已有成绩仍保留。请检查存储空间后打开学习统计重试。' }) : null,
     r.compressed ? el('p', { class: 'summary-notice', role: 'status', text: '明细已压缩：本次仅保留成绩摘要和知识点统计，无逐题明细。' }) : null,
     perfect ? el('p', { id: 'perfect-feedback', class: 'perfect-feedback' + (id ? '' : ' feedback-pulse'),
-      role: 'status', text: '✓ 全对！每一道题都答对了，真棒！' }) : null,
+      role: 'status', text: r.paper?.variant ? '✓ 这个知识点掌握得不错，变式题全部答对！' : '✓ 全对！每一道题都答对了，真棒！' }) : null,
     el('section', { class: 'card score-card' }, [
       el('div', { class: 'score-summary' }, [
         el('span', { text: '正确率' }),
@@ -60,12 +84,26 @@ export function renderResult(root, ctx) {
         el('div', { class: 'review-answers' }, [
           el('span', { class: 'wrong-answer', text: `你的答案：${w.userAnswer}` }),
           el('span', { class: 'right-answer', text: `正确答案：${w.expected}` })
-        ])
+        ]),
+        !r.compressed ? el('button', { class: 'btn', text: '举一反三 · 5 道同类题',
+          disabled: !mistakes.some(m => m.key === mistakeKeyOf(w.question)),
+          onclick: () => {
+            const m = mistakes.find(m => m.key === mistakeKeyOf(w.question));
+            if (m) begin([m.id], { kind: 'variant' });
+          } }) : null
       ]))) : el('div', { class: 'all-correct' }, [icon('check'), el('p', { text: r.skipped ? '已作答的题目全部答对，记得留意未作答的题。' : '全部答对，真棒！' })])
     ])]),
     el('div', { class: 'result-actions' }, [
       el('a', { class: 'btn btn-primary', href: '#/practice' }, ['再出一份题', icon('arrow')]),
+      el('a', { class: 'btn', href: '#/mistakes', text: '查看错题本' }),
+      el('a', { class: 'btn', href: '#/stats', text: '查看学习统计' }),
+      r.paper?.variant ? el('button', { class: 'btn', text: '再来一组变式题',
+        onclick: () => begin(r.paper.sourceMistakeIds, { kind: 'variant', excludeKeys: previousKeys }) }) : null,
+      r.paper?.variantRemainingIds?.length ? el('button', { class: 'btn',
+        text: `继续下一批变式（剩余 ${r.paper.variantRemainingIds.length} 道原错题）`,
+        onclick: () => begin(r.paper.variantRemainingIds, { kind: 'variant', excludeKeys: previousKeys }) }) : null,
       el('span', { class: 'muted small', text: '也可以休息一下，明天继续。' })
-    ])
+    ]),
+    el('p', { id: 'result-action-error', class: 'alert', role: 'alert' })
   ]));
 }
