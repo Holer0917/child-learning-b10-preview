@@ -6,9 +6,10 @@ import { dateStr } from '../../utils/date.js';
 import { getKnowledgePoint, QUESTION_TYPES } from '../../domain/syllabus.js';
 
 const RANGES = [{ id: 7, name: '最近 7 次' }, { id: 30, name: '最近 30 次' }, { id: 'all', name: '全部' }];
-const state = { range: 30, showTable: false };
+const state = { range: 30, showTable: false, expanded: {} };
 export function renderStats(root) {
   state.range = 30; state.showTable = false;
+  state.expanded = {};
   const pid = getActiveProfile()?.id;
   const saved = pid ? updateAwards(pid) : true;
   paint(root, saved);
@@ -17,6 +18,7 @@ export function renderStats(root) {
   return () => clearInterval(timer);
 }
 function paint(root, awardsSaved = true) {
+  root.querySelectorAll('details[data-stats-section]').forEach(node => { state.expanded[node.dataset.statsSection] = node.open; });
   const previousId = root.contains(document.activeElement) ? document.activeElement.id : null;
   const pid = getActiveProfile()?.id;
   if (!pid) {
@@ -120,6 +122,12 @@ function renderLineChart(points) {
 }
 
 
+function fold(key, title, content, className = '') {
+  return el('details', { class: `stats-fold ${className}`, dataset: { statsSection: key }, open: !!state.expanded[key] }, [
+    el('summary', { id: `stats-section-${key}` }, el('h2', { class: 'card-title', text: title })),
+    ...content
+  ]);
+}
 function masteryCard(items) {
   const levels = { good: ['✓', '良好'], warn: ['△', '待加强'], weak: ['!', '薄弱'], unpracticed: ['—', '未练习'] };
   const weakest = items.filter(i => i.mastery !== null).slice(0, 3);
@@ -133,7 +141,7 @@ function masteryCard(items) {
           'aria-label': `前往练习：${i.name}`, text: '前往练习' })
       ])))
     ]) : null,
-    el('h2', { class: 'card-title', text: '知识点掌握度' }),
+    fold('mastery', '知识点掌握度', [
     !items.length ? el('p', { class: 'muted', text: '还没有练习过的知识点。' }) : null,
     el('ul', { class: 'mastery-list' }, items.map(i => {
       const [symbol, label] = levels[i.level];
@@ -147,18 +155,17 @@ function masteryCard(items) {
         el('p', { class: 'muted small', text: `${i.correct} / ${i.answered} 题有效作答正确` }),
         el('a', { class: 'btn', href: `#/practice?kp=${encodeURIComponent(i.kpId)}`, text: '立即练习' })
       ]);
-    }))
+    }))])
   ]);
 }
 function calendarCard(days) {
-  return el('section', { class: 'card' }, [
-    el('h2', { class: 'card-title', text: '最近 8 周的练习情况' }),
+  return fold('calendar', '最近 8 周的练习情况', [
     el('p', { class: 'muted small', text: `${days[0].date} 至 ${days.at(-1).date}，格内为日期和有效作答题数。` }),
     el('div', { class: 'activity-calendar', role: 'list', 'aria-label': '最近56天练习日历' }, days.map(d =>
       el('div', { class: 'activity-day' + (d.count ? ' has-practice' : ''), role: 'listitem',
         title: `${d.date}，有效作答 ${d.count} 道`, 'aria-label': `${d.date}，有效作答 ${d.count} 道` }, [
           el('span', { text: d.date.slice(5) }), el('strong', { text: String(d.count) })])) )
-  ]);
+  ], 'card');
 }
 function badgesCard(items) {
   return el('section', { class: 'card' }, [

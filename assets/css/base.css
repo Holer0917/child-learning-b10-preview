@@ -331,6 +331,10 @@ body:has(.quiz-page) .header-nav{display:none}
 .mistakes-buttons .btn{font-size:13px}
 }
 .stats-page{max-width:900px;margin:0 auto}
+.stats-fold>summary{min-height:44px;padding:8px 0;cursor:pointer}
+.stats-fold>summary .card-title{display:inline;margin:0}
+.stats-fold>summary::marker{color:var(--c-primary)}
+.stats-fold[open]>summary{margin-bottom:12px}
 .stats-chart-wrap{margin:14px 0 4px}
 .stats-chart{display:block;width:100%;height:auto}
 .chart-grid{stroke:#e4e4e4;stroke-width:1}
