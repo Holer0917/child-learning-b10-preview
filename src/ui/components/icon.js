@@ -1,6 +1,8 @@
 import { svg } from '../../utils/dom.js';
 
 const paths = {
+  volume: ['M11 4 6 8H3v8h3l5 4Z', 'M15 8a6 6 0 0 1 0 8', 'M18 5a10 10 0 0 1 0 14'],
+  muted: ['M11 4 6 8H3v8h3l5 4Z', 'm16 9 6 6', 'm22 9-6 6'],
   book: ['M4 4h6a3 3 0 0 1 3 3v14a4 4 0 0 0-4-3H4z', 'M20 4h-4a3 3 0 0 0-3 3v14a4 4 0 0 1 4-3h3z'],
   pencil: ['m15 4 5 5-11 11-6 1 1-6Z', 'm12 7 5 5'],
   leaf: ['M20 4C8 2 2 10 7 16s15 2 13-12Z', 'M4 21 16 9'],

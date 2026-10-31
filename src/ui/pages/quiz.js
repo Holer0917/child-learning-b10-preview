@@ -16,7 +16,8 @@ export function renderQuiz(root, ctx) {
   function updateSoundControls() {
     const state = answerFeedback.state(), button = root.querySelector('#toggle-sound');
     if (button) {
-      button.textContent = `提示音：${state.enabled ? '开启' : '关闭'}`;
+      button.replaceChildren(icon(state.enabled ? 'volume' : 'muted'));
+      button.title = state.enabled ? '静音' : '开启提示音';
       button.setAttribute('aria-pressed', String(state.enabled));
     }
     const notice = root.querySelector('#sound-status');
@@ -165,7 +166,7 @@ export function renderQuiz(root, ctx) {
         el('div', { class: 'quiz-tools' }, [
           el('button', { id: 'toggle-sound', class: 'btn sound-toggle', type: 'button',
             'aria-pressed': String(answerFeedback.state().enabled), 'aria-describedby': 'sound-status',
-            text: `提示音：${answerFeedback.state().enabled ? '开启' : '关闭'}`,
+            'aria-label': '答题提示音',
             onclick: () => answerFeedback.setSoundEnabled(!answerFeedback.state().enabled) }),
           el('button', { id: 'exit-quiz', class: 'link-btn', text: '退出练习', onclick: exit })
         ])

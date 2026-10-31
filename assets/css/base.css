@@ -155,7 +155,8 @@ html:has(.kp-dialog[open]){overflow:hidden}
 .quiz-heading h1{font-size:25px;margin:0}
 .quiz-heading p{display:none}
 .quiz-tools{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
-.sound-toggle{min-height:44px;padding:6px 10px;font-size:13px;white-space:nowrap}
+.sound-toggle{min-width:44px;min-height:44px;padding:10px}
+.sound-toggle .icon{display:block;width:22px;height:22px}
 .sound-status{margin:8px 0}
 .perfect-feedback{font-weight:600;margin:0 0 16px}
 .feedback-pulse{animation:answer-arrive 300ms ease-out}
