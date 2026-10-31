@@ -1,8 +1,7 @@
 import { el } from '../../utils/dom.js';
-import { icon } from '../components/icon.js';
 import {
   listProfiles, getActiveProfile, createProfile, updateProfile, removeProfile,
-  switchProfile, AVATARS, MAX_PROFILES, hasActiveSession, validateProfileInput
+  switchProfile, AVATARS, MAX_PROFILES, hasActiveSession
 } from '../../domain/profile.js';
 import { read } from '../../core/storage.js';
 import { refresh } from '../../core/router.js';
@@ -10,12 +9,14 @@ import { formatDate } from '../../utils/date.js';
 import { takeImportReceipt } from '../../domain/backup.js';
 
 const state = {
+  creating: false,
   editingId: null,
   form: { name: '', grade: 1, avatar: AVATARS[0] },
   error: ''
 };
 
 export function renderProfiles(root) {
+  state.creating = false;
   const receipt = takeImportReceipt();
   state.message = receipt ? `恢复完成：${receipt.profiles}个档案、${receipt.records}条练习记录、${receipt.mistakes}道错题。` : '';
   state.editingId = null;
@@ -30,12 +31,11 @@ function paint(root, focusId = document.activeElement?.id) {
 
   root.replaceChildren(el('section', { class: 'page profiles-page' }, [
     el('header', { class: 'page-head' }, [
-      el('span', { class: 'eyebrow' }, [icon('grid'), '每个孩子，一份独立记录']),
-      el('h1', { text: '学习档案' }),
+      el('h1', { tabindex: -1, text: state.editingId ? '编辑档案' : state.creating ? '创建档案' : '学习档案' }),
       el('p', { class: 'muted', text: '最多创建 3 个档案。切换档案后，出题、历史和错题都会按孩子分开记录。' })
     ]),
 
-    el('section', { class: 'card profiles-list-card' }, [
+    el('section', { class: 'card profiles-list-card', hidden: state.creating || !!state.editingId }, [
       el('div', { class: 'row-between' }, [
         el('h2', { class: 'card-title', text: '全部档案' }),
         el('span', { class: 'muted small', text: `${profiles.length} / ${MAX_PROFILES}` })
@@ -43,16 +43,16 @@ function paint(root, focusId = document.activeElement?.id) {
       profiles.length
         ? el('ul', { class: 'profiles-list' }, profiles.map(p => profileCard(p, active, root)))
         : el('div', { class: 'history-empty' }, [
-          icon('grid'),
           el('h3', { text: '还没有学习档案' }),
           el('p', { class: 'muted', text: '创建一个档案，开始记录孩子的练习。' })
         ])
     ]),
 
-    el('section', { class: 'card profile-form-card' }, [
+    state.creating || state.editingId ? el('section', { class: 'card profile-form-card' }, [
       el('h2', { class: 'card-title', text: state.editingId ? '编辑档案' : '创建档案' }),
       profileForm(root, profiles)
-    ]),
+    ]) : el('button', { class: 'btn btn-primary', text: '创建档案', disabled: profiles.length >= MAX_PROFILES,
+      onclick: () => { state.creating = true; state.error = ''; paint(root, 'profile-name'); } }),
     state.error ? el('p', { class: 'alert', role: 'alert', text: state.error }) : null,
     state.message ? el('p', { role: 'status', text: state.message }) : null
   ]));
@@ -170,15 +170,16 @@ function profileForm(root, profiles) {
           }
         }
       }),
-      editing ? el('button', {
-        class: 'btn', type: 'button', text: '取消',
+      el('button', {
+        class: 'btn', type: 'button', text: '返回档案列表',
         onclick: () => {
+          state.creating = false;
           state.editingId = null;
           state.form = { name: '', grade: 1, avatar: AVATARS[0] };
           state.error = '';
           paint(root, 'profile-name');
         }
-      }) : null,
+      }),
       !can ? el('p', { class: 'muted small', text: `已达到 ${MAX_PROFILES} 个档案上限，请先删除一个档案。` }) : null
     ])
   ]);
