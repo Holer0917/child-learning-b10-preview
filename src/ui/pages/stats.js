@@ -3,6 +3,7 @@ import { getActiveProfile } from '../../domain/profile.js';
 import { accuracyTrend, masteryByKP, practiceSummary, badges, activityCalendar, updateAwards } from '../../domain/stats.js';
 import { formatAccuracy } from '../../utils/format.js';
 import { dateStr } from '../../utils/date.js';
+import { getKnowledgePoint, QUESTION_TYPES } from '../../domain/syllabus.js';
 
 const RANGES = [{ id: 7, name: '最近 7 次' }, { id: 30, name: '最近 30 次' }, { id: 'all', name: '全部' }];
 const state = { range: 30, showTable: false };
@@ -126,12 +127,15 @@ function masteryCard(items) {
   const weakest = items.filter(i => i.mastery !== null).slice(0, 3);
   return el('section', { class: 'card mastery-card' }, [
     el('h2', { class: 'card-title', text: '知识点掌握度' }),
-    el('p', { class: 'muted small', text: '首次有效提交正确数 ÷ 有效作答数，含重练与变式，排除跳过及同题订正。按掌握度由低到高排列。' }),
     !items.length ? el('p', { class: 'muted', text: '还没有练习过的知识点。' }) : null,
     weakest.length ? el('section', { class: 'priority-practice' }, [
       el('h3', { text: '建议优先练习' }),
-      el('ul', {}, weakest.map(i => el('li', {}, el('a', { href: `#/practice?kp=${encodeURIComponent(i.kpId)}`,
-        text: `${i.name}（${i.mastery}%）· 立即出题练习该知识点` }))))
+      el('ul', {}, weakest.map(i => el('li', {}, [
+        el('div', {}, [el('strong', { text: `${i.name}（${i.mastery}%）` }),
+          el('p', { class: 'muted small', text: `题型：${QUESTION_TYPES.filter(t => getKnowledgePoint(i.kpId)?.types.includes(t.id)).map(t => t.name).join('、')}` })]),
+        el('a', { class: 'btn', href: `#/practice?kp=${encodeURIComponent(i.kpId)}`,
+          'aria-label': `前往练习：${i.name}`, text: '前往练习' })
+      ])))
     ]) : null,
     el('ul', { class: 'mastery-list' }, items.map(i => {
       const [symbol, label] = levels[i.level];
