@@ -1,9 +1,4 @@
-/**
- * 出题台
- *
- * 只负责：收集参数 → 调用出题引擎 → 展示结果。
- * 页面处理输入确认与反馈；出题范围、默认知识点、去重仍由 domain 层兜底。
- */
+// 三步出题；领域层负责组卷校验。
 
 import { el } from '../../utils/dom.js';
 import { bus, EVENTS } from '../../core/bus.js';
@@ -24,11 +19,13 @@ const DIFFICULTIES = [
 ];
 
 const COUNTS = [10, 20, 30, 50];
+const STEPS = ['选择年级', '选择知识点', '设置并出题'];
 
 /** 页面内状态（不持久化，刷新即重置） */
 const state = {
+  step: 1,
+  reached: 1,
   grade: 1,
-  keyword: '',
   kpIds: [],
   count: 30,
   countDraft: '30',
@@ -48,7 +45,6 @@ const state = {
 export function renderPractice(root, ctx) {
   const profile = getActiveProfile();
   state.grade = profile?.grade ?? 1;
-  state.keyword = '';
   state.kpIds = getGradeDefaultKPs(state.grade);
   state.count = 30;
   state.countDraft = '30';
@@ -56,6 +52,7 @@ export function renderPractice(root, ctx) {
   state.difficulty = 'normal';
   state.types = ['horizontal'];
   const point = getKnowledgePoint(ctx?.query.get('kp'));
+  state.step = state.reached = point ? 3 : 1;
   if (point) {
     state.grade = point.grade;
     state.kpIds = [point.id];
@@ -74,43 +71,59 @@ export function renderPractice(root, ctx) {
 
 function paint(root, focusId) {
   root.replaceChildren(
-    el('section', { class: 'page page-home' }, [
+    el('section', { class: 'page practice-flow' }, [
       el('header', { class: 'page-head' }, [
         el('h1', { text: '出题练习' }),
         el('p', { class: 'muted', text: '选择年级、知识点、题量与题型，生成练习题。' })
       ]),
       resumeBlock(root),
-      el('div', { class: 'home-workspace' }, [
-        el('div', { class: 'knowledge-column' }, [
-          card('选择年级', gradeRow(root), '01', '支持小学 1–3 年级'),
-          card('选择知识点', pointEntry(root), '02', '集中选择，确认后返回练习设置')
-        ]),
-        el('aside', { class: 'settings-column', 'aria-label': '练习设置' }, [
-          card('练习设置', [optionBlock(root), compatibilityBlock(),
+      el('nav', { class: 'chips grade-options practice-steps', 'aria-label': '出题步骤' }, STEPS.map((name, i) =>
+        el('button', { id: `practice-step-${i + 1}`, type: 'button', class: 'chip' + (state.step === i + 1 ? ' is-active' : ''),
+          'aria-current': state.step === i + 1 ? 'step' : null,
+          disabled: i + 1 > state.reached || (i === 2 && !state.kpIds.length),
+          onclick: () => changeStep(root, i + 1) }, [el('span', { text: `0${i + 1}` }), el('strong', { text: name })]))),
+      state.step === 1 ? card('选择年级', [gradeRow(root),
+        el('div', { class: 'actions' }, nextStep(root, 2))], '01', '选择本次练习的年级，再进入下一步') : null,
+      state.step === 2 ? card('选择知识点', [pointEntry(root),
+        !state.kpIds.length ? el('p', { class: 'warn-text', role: 'status', text: '请至少选择一个知识点，再进入下一步。' }) : null,
+        el('div', { class: 'actions' }, [backStep(root, 1), nextStep(root, 3)])
+      ], '02', `${GRADES.find(g => g.id === state.grade).name} · 选择完成后进入练习设置`) : null,
+      state.step === 3 ? card('练习设置', [
+            el('p', { class: 'small muted', text: `${GRADES.find(g => g.id === state.grade).name} · 已选 ${state.kpIds.length} 个知识点` }),
+            optionBlock(root), compatibilityBlock(),
             el('div', { class: 'practice-summary' }, [
-              el('div', { class: 'summary-icon' }, icon('book')),
               el('div', {}, [el('strong', { id: 'count-confirmation', text: `本次将生成 ${state.count} 道题` }),
                 el('p', { text: `${GRADES.find(g => g.id === state.grade).name} · ${state.kpIds.length} 个知识点` })])
-            ]), errorBlock(root), generateBar(root),
-            el('p', { class: 'settings-note' }, [icon('leaf'), '不用赶时间，认真做好每一道。'])
-          ], '03', '设置题量、难度、题型及倒计时')
-        ])
-      ]),
-      state.paper ? paperBlock(root) : null
+            ]), errorBlock(root), generateBar(root), backStep(root, 2)
+          ], '03', '设置题量、难度、题型及倒计时') : null,
+      state.step === 3 && state.paper ? paperBlock(root) : null
     ].filter(Boolean))
   );
   if (focusId) root.querySelector(`#${focusId}`)?.focus({ preventScroll: true });
 }
 
-/* ------------------------------------------------------------------ *
- * 区块
- * ------------------------------------------------------------------ */
+function changeStep(root, step) {
+  if (step === 3 && !state.kpIds.length) return;
+  state.step = step; state.reached = Math.max(step, state.reached);
+  paint(root, `practice-title-0${step}`);
+  root.querySelector(`#practice-title-0${step}`).scrollIntoView();
+}
+function nextStep(root, step) {
+  return el('button', { id: `practice-next-${step - 1}`, class: 'btn btn-primary', type: 'button',
+    text: `下一步：${STEPS[step - 1]}`, disabled: step === 3 && !state.kpIds.length,
+    onclick: () => changeStep(root, step) });
+}
+function backStep(root, step) {
+  return el('button', { id: `practice-back-${step + 1}`, class: 'btn', type: 'button', text: '上一步', onclick: () => changeStep(root, step) });
+}
+
+// 页面区块
 
 function card(title, body, step, description) {
   return el('section', { class: 'card' }, [
     el('div', { class: 'card-heading' }, [
       step ? el('span', { class: 'step-number', text: step }) : icon('clock', 'resume-icon'),
-      el('div', {}, [el('h2', { class: 'card-title', text: title }),
+      el('div', {}, [el('h2', { class: 'card-title', id: step ? `practice-title-${step}` : null, tabindex: -1, text: title }),
         description ? el('p', { class: 'card-description', text: description }) : null])
     ]),
     ...(Array.isArray(body) ? body : [body])
@@ -132,7 +145,6 @@ function resumeBlock(root) {
 }
 
 function gradeRow(root, selection = state, refresh = id => paint(root, id)) {
-  const notes = ['打好计算基础', '乘除法小进阶', '探索更多运算'];
   return el('div', { class: 'chips grade-options' }, GRADES.map((g) =>
     el('button', {
       id: `${selection === state ? 'grade' : 'kp-grade'}-${g.id}`,
@@ -148,9 +160,7 @@ function gradeRow(root, selection = state, refresh = id => paint(root, id)) {
         if (selection === state) { state.paper = null; state.error = ''; }
         refresh(`${selection === state ? 'grade' : 'kp-grade'}-${g.id}`);
       }
-    }, [el('span', { class: 'grade-number', text: String(g.id) }),
-      el('span', { class: 'grade-option-copy' }, [el('strong', { text: g.name }),
-        el('span', { text: notes[g.id - 1] })])])
+    }, el('strong', { text: g.name }))
   ));
 }
 
@@ -447,13 +457,10 @@ function updateCountControls(root, editing = false) {
   const generateButton = root.querySelector('#generate-paper');
   generateButton.setAttribute('aria-label', label);
   generateButton.querySelector('.generate-label').textContent = label;
-  root.querySelector('.cta-context strong').textContent = `${state.count} 道题`;
 }
 
 function generateBar(root) {
   return el('div', { class: 'sticky-bar' }, [
-    el('span', { class: 'cta-context' }, [el('strong', { text: `${state.count} 道题` }),
-      el('small', { text: `${state.kpIds.length} 个知识点已选` })]),
     el('button', {
       id: 'generate-paper',
       class: 'btn btn-primary btn-block',
