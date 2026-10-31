@@ -11,7 +11,7 @@ import { migrate, isAvailable, read, recoverTransaction } from './core/storage.j
 import { ensureProfile, getActiveProfile } from './domain/profile.js';
 import { start, register, registerFallback } from './core/router.js';
 import { renderHome } from './ui/pages/home.js';
-import { renderPractice } from './ui/pages/practice.js';
+import { renderPractice, renderPracticePreview } from './ui/pages/practice.js';
 import { renderHistory } from './ui/pages/history.js';
 import { renderMistakes } from './ui/pages/mistakes.js';
 import { renderQuiz } from './ui/pages/quiz.js';
@@ -76,7 +76,7 @@ function boot() {
     const path = window.location.hash.split('?')[0];
     header.querySelectorAll('.nav-link').forEach(link => {
       if (link.hash === path || (link.hash === '#/home' && !path)
-          || (link.hash === '#/practice' && path === '#/quiz')
+          || (link.hash === '#/practice' && (path === '#/quiz' || path === '#/preview'))
           || (link.hash === '#/history' && path === '#/result')) link.setAttribute('aria-current', 'page');
       else link.removeAttribute('aria-current');
     });
@@ -98,6 +98,7 @@ function boot() {
     return render(root, ctx);
   };
   register('/practice', withProfile(renderPractice), '出题');
+  register('/preview', withProfile(renderPracticePreview), '题目预览');
   register('/history', renderHistory, '成绩历史');
   register('/mistakes', renderMistakes, '错题本');
   register('/stats', renderStats, '学习统计');
