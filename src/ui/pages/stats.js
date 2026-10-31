@@ -31,7 +31,7 @@ function paint(root, awardsSaved = true) {
     el('section', { class: 'card' }, [el('h2', { class: 'card-title', text: '练习足迹' }),
       el('div', { class: 'stats-summary-grid' }, [metric('有效练习', `${summary.sessions} 次`),
         metric('有效作答', `${summary.totalQuestions} 道`), metric('练习天数', `${summary.days} 天`), metric('连续打卡', `${summary.streak} 天`)]),
-      el('p', { class: 'muted small', text: `累计练习用时约 ${summary.totalHours} 小时。同一自然日有有效作答才计一天。` })]),
+      el('p', { class: 'muted small', text: `累计练习用时约 ${summary.totalHours} 小时。` })]),
     trendCard(root, trend), masteryCard(mastery), calendarCard(activityCalendar(pid)), badgesCard(badges(pid))
   ]));
   if (previousId) (document.getElementById(previousId) ?? root.querySelector('h1'))?.focus({ preventScroll: true });
@@ -44,7 +44,7 @@ function trendCard(root, trend) {
       'aria-pressed': String(state.range === r.id), text: r.name,
       onclick: () => { state.range = r.id; state.showTable = false; paint(root); }
     }))),
-    !trend.ok ? el('p', { class: 'muted', text: '练习记录不足，暂无法生成趋势图' })
+    !trend.ok ? el('p', { class: 'muted small', text: '练习记录不足，暂无法生成趋势图' })
       : el('div', {}, [el('div', { class: 'stats-chart-wrap' }, renderLineChart(trend.points)),
         el('p', { class: 'trend-change', role: 'status', text: `最近一次正确率 ${formatAccuracy(trend.points.at(-1).value)}，较上次${trend.direction}${trend.delta ? ` ${Math.abs(trend.delta).toFixed(1)} 个百分点` : ''}。` }),
         el('p', { class: 'muted small', text: `共 ${trend.points.length} 条记录，按完成时间从旧到新排列。` }),
