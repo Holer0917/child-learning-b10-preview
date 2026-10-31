@@ -392,6 +392,9 @@ a.profile-chip{text-decoration:none}
 .btn-disabled{opacity:.6}
 .file-input{display:block;margin:12px 0;width:100%;min-height:44px}
 .file-input::file-selector-button{min-height:44px;background:#fff;border:1px solid;border-radius:4px}
+.settings-page p,.settings-page .sound-setting,.settings-page .import-preview li,.settings-page .file-input{font-size:14px}
+.settings-page h3{font-size:16px;font-weight:650}
+.settings-page .file-input::file-selector-button{font:inherit;color:inherit;padding:8px 14px;border-color:#cddfe0;border-radius:12px}
 .import-preview,.import-errors{padding:12px;margin-top:12px;border:1px solid #777;background:#fff;border-radius:8px;overflow-wrap:anywhere}
 .import-errors{border-style:dashed}
 .sound-setting{display:flex;align-items:center;min-height:44px;gap:8px;margin:12px 0}

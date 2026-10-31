@@ -14,8 +14,10 @@ function paint(root, focusId = document.activeElement?.id) {
   const plan = state.payload ? prepareImport(state.payload, { mode: state.mode }) : null;
   const errors = [...state.errors, ...(!plan?.ok && plan ? plan.errors : [])];
   root.replaceChildren(el('section', { class: 'page settings-page' }, [
-    el('h1', { text: '数据管理', tabindex: -1 }),
-    el('p', { class: 'muted', text: '档案、成绩和错题保存在当前浏览器。备份文件可用于更换设备或恢复数据。' }),
+    el('header', { class: 'page-head' }, [
+      el('h1', { text: '数据管理', tabindex: -1 }),
+      el('p', { class: 'muted', text: '档案、成绩和错题保存在当前浏览器。备份文件可用于更换设备或恢复数据。' })
+    ]),
     el('section', { class: 'card' }, [el('h2', { class: 'card-title', text: '存储与偏好' }),
       el('p', { text: `当前占用约 ${formatBytes(usedBytes())}（按本地字符串估算）。` }),
       !isAvailable() ? el('p', { class: 'alert', text: '本地存储不可用，当前数据仅临时保留，暂不能导入。' }) : null,
@@ -24,8 +26,7 @@ function paint(root, focusId = document.activeElement?.id) {
           const ok = write('settings', { ...read('settings', {}), sound: e.target.checked });
           state.message = ok ? (isAvailable() ? '音效设置已保存。' : '音效设置仅本次打开有效。') : '';
           state.errors = ok ? [] : [{ path: '$.settings', message: '设置未保存，请检查存储空间或恢复状态。' }]; paint(root);
-        } }), '播放答题提示音']),
-      el('a', { class: 'btn', href: '#/profiles', text: '管理学习档案' })]),
+        } }), '播放答题提示音'])]),
     el('section', { class: 'card' }, [el('h2', { class: 'card-title', text: '导出备份' }),
       el('p', { class: 'muted', text: '导出全部档案、成绩、未完成练习、错题、徽章和音效设置。文件保存在你选择的位置。' }),
       el('button', { id: 'export-backup', class: 'btn', text: '导出备份', onclick: () => {

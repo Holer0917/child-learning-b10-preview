@@ -27,7 +27,6 @@ function paint(root, awardsSaved = true) {
   const metric = (label, value) => el('div', { class: 'history-stat' }, [el('strong', { text: value }), el('span', { text: label })]);
   root.replaceChildren(el('section', { class: 'page stats-page' }, [
     el('h1', { text: '学习统计', tabindex: -1 }),
-    el('p', { class: 'muted', text: '以下统计仅覆盖当前档案已保留的练习明细与摘要。跳过不计入练习量和打卡。' }),
     !awardsSaved ? el('p', { class: 'alert', role: 'alert', text: '徽章日期暂未保存，已有成绩仍保留，请释放空间后重试。' }) : null,
     el('section', { class: 'card' }, [el('h2', { class: 'card-title', text: '练习足迹' }),
       el('div', { class: 'stats-summary-grid' }, [metric('有效练习', `${summary.sessions} 次`),
