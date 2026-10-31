@@ -245,6 +245,7 @@ to{opacity:1;transform:translateY(0)}
 .confirm-dialog::backdrop{background:rgb(0 0 0 / .25)}
 .site-footer{max-width:1020px;margin:12px auto 0;padding:16px 0 24px;border-top:1px solid var(--c-line);color:var(--c-muted);font-size:12px}
 .pwa-panel{margin-top:12px}
+body:not(:has(.start-page)) #pwa-panel{display:none}
 .pwa-panel .actions{margin:8px 0 12px;max-width:440px}
 .pwa-panel .btn{font-size:13px}
 .pwa-panel p{overflow-wrap:anywhere}
