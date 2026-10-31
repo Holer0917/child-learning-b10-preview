@@ -126,10 +126,8 @@ function masteryCard(items) {
   const levels = { good: ['✓', '良好'], warn: ['△', '待加强'], weak: ['!', '薄弱'], unpracticed: ['—', '未练习'] };
   const weakest = items.filter(i => i.mastery !== null).slice(0, 3);
   return el('section', { class: 'card mastery-card' }, [
-    el('h2', { class: 'card-title', text: '知识点掌握度' }),
-    !items.length ? el('p', { class: 'muted', text: '还没有练习过的知识点。' }) : null,
     weakest.length ? el('section', { class: 'priority-practice' }, [
-      el('h3', { text: '建议优先练习' }),
+      el('h2', { class: 'card-title', text: '建议优先练习' }),
       el('ul', {}, weakest.map(i => el('li', {}, [
         el('div', {}, [el('strong', { text: `${i.name}（${i.mastery}%）` }),
           el('p', { class: 'muted small', text: `题型：${QUESTION_TYPES.filter(t => getKnowledgePoint(i.kpId)?.types.includes(t.id)).map(t => t.name).join('、')}` })]),
@@ -137,6 +135,8 @@ function masteryCard(items) {
           'aria-label': `前往练习：${i.name}`, text: '前往练习' })
       ])))
     ]) : null,
+    el('h2', { class: 'card-title', text: '知识点掌握度' }),
+    !items.length ? el('p', { class: 'muted', text: '还没有练习过的知识点。' }) : null,
     el('ul', { class: 'mastery-list' }, items.map(i => {
       const [symbol, label] = levels[i.level];
       return el('li', { class: `mastery-entry level-${i.level}` }, [
