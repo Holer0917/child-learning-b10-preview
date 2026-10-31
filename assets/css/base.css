@@ -1,18 +1,17 @@
-/* 极简功能版：所有页面保持白底，不跟随系统切换深色主题。 */
 :root{
-  color-scheme:only light;
-  --c-bg:#fff;
-  --c-surface:#fff;
-  --c-text:#111;
-  --c-muted:#606060;
-  --c-line:#d8d8d8;
-  --c-primary:#111;
-  --c-primary-weak:#fff;
-  --c-danger:#a21b1b;
-  --c-ok:#176337;
-  --c-warn:#765012;
-  --topbar-height:0px;
-  font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;
+color-scheme:only light;
+--c-bg:#fff;
+--c-surface:#fff;
+--c-text:#111;
+--c-muted:#606060;
+--c-line:#d8d8d8;
+--c-primary:#111;
+--c-primary-weak:#fff;
+--c-danger:#a21b1b;
+--c-ok:#176337;
+--c-warn:#765012;
+--topbar-height:0px;
+font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;
 }
 *{box-sizing:border-box}
 html,body{margin:0;padding:0;background:#fff;color:var(--c-text)}
@@ -28,7 +27,7 @@ button:disabled{cursor:default;color:#777}
 [hidden]{display:none !important}
 .visually-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}
 .icon,.eyebrow,.profile-avatar,
-.summary-icon,.settings-note,.question-tag,.keypad-caption{display:none}
+.summary-icon,.question-tag,.keypad-caption{display:none}
 .muted,.small,.card-description{color:var(--c-muted)}
 .small,.card-description{font-size:13px}
 p{margin:0 0 12px}
@@ -98,9 +97,9 @@ html:has(.kp-dialog[open]){overflow:hidden}
 .kp-dialog-body{overflow-y:auto;overscroll-behavior:contain;padding:16px 20px;scroll-padding:12px}
 .kp-dialog-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;border-top:1px solid var(--c-line)}
 @media (max-width:700px){
-  .kp-dialog{width:100%;height:100dvh;border:0;border-radius:0}
-  .kp-dialog-head{padding-top:max(14px,env(safe-area-inset-top))}
-  .kp-dialog-footer{padding-bottom:max(14px,env(safe-area-inset-bottom))}
+.kp-dialog{width:100%;height:100dvh;border:0;border-radius:0}
+.kp-dialog-head{padding-top:max(14px,env(safe-area-inset-top))}
+.kp-dialog-footer{padding-bottom:max(14px,env(safe-area-inset-bottom))}
 }
 .count-options{display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
 .custom-count-label{margin-top:12px}
@@ -161,11 +160,11 @@ html:has(.kp-dialog[open]){overflow:hidden}
 .perfect-feedback{font-weight:600;margin:0 0 16px}
 .feedback-pulse{animation:answer-arrive 300ms ease-out}
 @keyframes answer-arrive{
-  from{opacity:.55;transform:translateY(2px)}
-  to{opacity:1;transform:translateY(0)}
+from{opacity:.55;transform:translateY(2px)}
+to{opacity:1;transform:translateY(0)}
 }
 @media (prefers-reduced-motion:reduce){
-  .feedback-pulse{animation:none}
+.feedback-pulse{animation:none}
 }
 .quiz-meta{justify-content:space-between;margin-bottom:10px}
 .quiz-progress{display:block;width:100%;height:7px;margin-bottom:18px;border:1px solid #aaa;border-radius:0;background:#fff;accent-color:#555;appearance:none}
@@ -250,79 +249,53 @@ html:has(.kp-dialog[open]){overflow:hidden}
 .pwa-panel .btn{font-size:13px}
 .pwa-panel p{overflow-wrap:anywhere}
 @media (hover:hover){
-  .btn:hover:not(:disabled),.chip:hover,.start-entry:hover,.history-record:hover{border-color:#111;text-decoration:underline}
+.btn:hover:not(:disabled),.chip:hover,.start-entry:hover,.history-record:hover{border-color:#111;text-decoration:underline}
 }
 @media (pointer:coarse){
-  body:has(.quiz-page) .header-nav{display:none}
-  body:has(.quiz-page) .topbar{padding-top:calc(10px + env(safe-area-inset-top,0px));padding-left:calc(14px + env(safe-area-inset-left,0px));padding-right:calc(14px + env(safe-area-inset-right,0px))}
-  .app:has(.quiz-page){padding-left:calc(14px + env(safe-area-inset-left,0px));padding-right:calc(14px + env(safe-area-inset-right,0px));padding-bottom:calc(18px + env(safe-area-inset-bottom,0px))}
+body:has(.quiz-page) .header-nav{display:none}
 }
 @media (max-width:960px){
-  .header-nav{width:100%;order:3;margin:0;justify-content:space-between}
-  .nav-link{flex:1}
-  .profile-chip{margin-left:auto}
+.header-nav{width:100%;order:3;margin:0;justify-content:space-between}
+.nav-link{flex:1}
+.profile-chip{margin-left:auto}
 }
 @media (max-width:700px){
-  .topbar{padding:10px 14px;gap:8px 10px}
-  .brand{font-size:17px}
-  .profile-copy{gap:5px;font-size:12px}
-  .grade-tag{font-size:11px}
-  .header-nav{gap:3px}
-  .nav-link{font-size:13px;padding:6px 2px}
-  .app{padding:18px 14px}
-  h1{font-size:24px}
-  .card{padding:16px;margin-bottom:16px}
-  .start-grid,.result-detail-grid{grid-template-columns:1fr;gap:16px}
-  .start-entry{padding:18px}
-  .start-entry p{margin-bottom:4px}
-  .latest-practice,.resume-card{flex-wrap:wrap}
-  .latest-practice .btn,.resume-card .btn{width:100%}
-  .kp-list{grid-template-columns:1fr}
-  .kp-copy{flex:1}
-  .kp-level{font-size:11px}
-  .paper-block > .btn{max-width:none}
-  .question-list{grid-template-columns:1fr}
-  .quiz-card{grid-template-columns:1fr;gap:14px}
-  .quiz-page .page-head{margin-bottom:12px}
-  .quiz-heading{margin-bottom:8px}
-  .quiz-heading h1{font-size:23px}
-  .quiz-meta{font-size:12px;gap:6px}
-  .quiz-question{font-size:34px;margin:8px 0 16px;text-align:center}
-  .answer-feedback{margin-top:8px;min-height:22px}
-  .quiz-actions{margin-top:10px}
-  body:has(.quiz-page) .header-nav{display:none}
-  .score-card{grid-template-columns:1fr;gap:16px}
-  .score-summary{flex-direction:row;align-items:baseline;gap:16px}
-  .history-overview{padding-inline:8px}
-  .history-stat strong{font-size:20px}
-  .history-stat span{font-size:12px}
-  .history-toolbar{display:block}
-  .history-filters{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));margin-top:14px}
-  .history-filters .chip{padding:6px 1px;font-size:12px;white-space:nowrap}
-  .history-record{grid-template-columns:76px minmax(0,1fr);gap:8px 14px}
-  .record-score{grid-row:span 2}
-  .record-score strong{font-size:20px}
-  .record-copy time{font-size:14px}
-  .record-duration{grid-column:2}
-  .site-footer{margin:0 14px}
+.topbar{padding:10px 14px;gap:8px 10px}
+.brand{font-size:17px}
+.profile-copy{gap:5px;font-size:12px}
+.grade-tag{font-size:11px}
+.header-nav{gap:3px}
+.nav-link{font-size:13px;padding:6px 2px}
+.app{padding:18px 14px}
+h1{font-size:24px}
+.card{padding:16px;margin-bottom:16px}
+.start-grid,.result-detail-grid{grid-template-columns:1fr;gap:16px}
+.start-entry{padding:18px}
+.start-entry p{margin-bottom:4px}
+.latest-practice,.resume-card{flex-wrap:wrap}
+.latest-practice .btn,.resume-card .btn{width:100%}
+.kp-list{grid-template-columns:1fr}
+.kp-copy{flex:1}
+.kp-level{font-size:11px}
+.paper-block > .btn{max-width:none}
+.question-list{grid-template-columns:1fr}
+.answer-feedback{margin-top:8px;min-height:22px}
+body:has(.quiz-page) .header-nav{display:none}
+.score-card{grid-template-columns:1fr;gap:16px}
+.score-summary{flex-direction:row;align-items:baseline;gap:16px}
+.history-overview{padding-inline:8px}
+.history-stat strong{font-size:20px}
+.history-stat span{font-size:12px}
+.history-toolbar{display:block}
+.history-filters{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));margin-top:14px}
+.history-filters .chip{padding:6px 1px;font-size:12px;white-space:nowrap}
+.history-record{grid-template-columns:76px minmax(0,1fr);gap:8px 14px}
+.record-score{grid-row:span 2}
+.record-score strong{font-size:20px}
+.record-copy time{font-size:14px}
+.record-duration{grid-column:2}
+.site-footer{margin:0 14px}
 }
-@media (pointer:coarse) and (max-height:500px){
-  .app:has(.quiz-page){padding-top:10px}
-  .quiz-heading{margin-bottom:6px}
-  .quiz-heading h1{font-size:20px}
-  .quiz-meta{margin:8px 0}
-  .quiz-progress{margin-bottom:8px}
-  .quiz-card{padding:12px}
-  .quiz-question{font-size:32px;line-height:1.35;margin:0 0 8px}
-  .vertical-question{line-height:1.2;margin:0 0 8px}
-  .keypad{gap:4px}
-  .quiz-actions{margin-top:8px}
-}
-@media (pointer:coarse) and (max-height:500px) and (min-width:560px){
-  .quiz-card{grid-template-columns:minmax(0,1fr) 220px;gap:14px}
-}
-
-/* ---- 错题本（A03/A04） ---- */
 .mistakes-page{max-width:900px;margin:0 auto}
 .mistakes-overview{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
 .mistakes-toolbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
@@ -341,20 +314,18 @@ html:has(.kp-dialog[open]){overflow:hidden}
 .mistakes-actions{display:flex;flex-direction:column;gap:10px;margin-top:20px}
 .mistake-message{font-size:14px;color:var(--c-ok);margin:8px 0}
 @media (max-width:700px){
-  .mistakes-overview{padding-inline:8px}
-  .mistake-question{font-size:32px}
-  .mistakes-actions{padding:12px}
+.mistakes-overview{padding-inline:8px}
+.mistake-question{font-size:32px}
+.mistakes-actions{padding:12px}
 }
-/* ---- 错题本补充（A05/A06） ---- */
 .mistake-inline-actions{margin-top:6px;display:flex;gap:10px}
 .mistake-master-btn{font-size:13px;padding-inline:4px}
 .mistakes-buttons{display:flex;flex-direction:column;gap:8px}
 .mistake-cleanup{margin-top:0}
 .mistake-cleanup .link-btn{padding-inline:0}
 @media (max-width:700px){
-  .mistakes-buttons .btn{font-size:13px}
+.mistakes-buttons .btn{font-size:13px}
 }
-/* ---- 学习统计（A07/A08） ---- */
 .stats-page{max-width:900px;margin:0 auto}
 .stats-chart-wrap{margin:14px 0 4px}
 .stats-chart{display:block;width:100%;height:auto}
@@ -370,7 +341,6 @@ html:has(.kp-dialog[open]){overflow:hidden}
 .mastery-list{list-style:none;padding:0;margin:0}
 .mistakes-head-actions{margin-top:8px}
 .mistakes-head-actions .btn{max-width:220px}
-/* ---- A09 练习足迹与徽章 ---- */
 .stats-summary-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:12px 0}
 .badge-list{list-style:none;padding:0;margin:10px 0 0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .badge-item{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border:1px dashed var(--c-line);border-radius:3px;font-size:14px}
@@ -395,8 +365,8 @@ html:has(.kp-dialog[open]){overflow:hidden}
 .activity-day strong{font-size:15px}
 .variant-note{margin:8px 0}
 @media (max-width:700px){
-  .stats-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .badge-list{grid-template-columns:1fr}
+.stats-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.badge-list{grid-template-columns:1fr}
 }
 .header-nav{flex-wrap:wrap}
 a.profile-chip{text-decoration:none}
@@ -426,7 +396,34 @@ a.profile-chip{text-decoration:none}
 .record-delete{position:absolute;right:12px;top:12px;min-width:44px;min-height:44px;padding:8px;border:1px solid #777;background:#fff;color:#111;border-radius:6px;cursor:pointer}
 .input:focus-visible,input[type="date"]:focus-within,input[type="file"]:focus-visible{outline:3px solid #111;outline-offset:2px}
 @media (max-width:600px){.profile-card{flex-wrap:wrap} .profile-actions{width:100%} .nav-link{padding:8px}}
-
 .practice-flow{max-width:760px;margin:auto}
 .practice-steps{margin-bottom:20px}
 .practice-steps .chip{flex-direction:column;gap:2px;font-size:13px}
+body:has(.quiz-page) .site-footer{display:none}
+@media (pointer:coarse),(max-width:700px){
+body:has(.quiz-page) .topbar{display:none}
+.app:has(.quiz-page){padding:8px;min-height:100dvh}
+.quiz-heading{margin:0 0 4px;flex-wrap:nowrap;gap:6px}
+.quiz-heading h1{font-size:18px}
+.quiz-tools{gap:2px;flex-wrap:nowrap}
+.quiz-tools .btn,.quiz-tools .link-btn{padding:4px;font-size:12px}
+.quiz-meta{margin:2px 0;font-size:12px}
+.quiz-progress{height:4px;margin:4px 0}
+.quiz-card{grid-template-columns:1fr;padding:8px;margin:0;gap:6px}
+.quiz-question{font-size:32px;line-height:1.2;margin:0 0 6px}
+.vertical-question{margin:0 0 6px;line-height:1.15}
+.quiz-problem .field-label{margin:0;font-size:12px}
+.answer-input{min-height:44px;height:44px;padding:2px 6px}
+#answer-hint{margin:2px 0;font-size:11px}
+.answer-feedback{min-height:20px;margin:2px 0;font-size:12px}
+.quiz-actions{margin-top:4px;gap:4px}.quiz-card.has-feedback .keypad{display:none}
+.keypad{grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}
+.keypad-compare{grid-template-columns:repeat(4,minmax(0,1fr))}
+}
+@media (pointer:coarse) and (max-height:600px){
+.quiz-card{grid-template-columns:minmax(0,1fr) 140px;gap:6px}
+.keypad{grid-template-columns:repeat(3,minmax(0,1fr));gap:3px}
+.quiz-actions{flex-wrap:wrap}
+.quiz-actions .btn{min-width:0;flex-basis:40%;padding:4px 2px}
+}
+@media (pointer:coarse) and (max-height:400px) and (min-width:560px){.quiz-card{grid-template-columns:minmax(0,1fr) 188px}.keypad{grid-template-columns:repeat(4,minmax(0,1fr))}#answer-hint{display:none}.quiz-problem .field-label{position:absolute;clip-path:inset(50%)}}
