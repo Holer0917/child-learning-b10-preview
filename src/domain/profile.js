@@ -5,6 +5,17 @@ import { makeId } from '../utils/random.js';
 
 const KEY_PROFILES = 'profiles';
 const KEY_ACTIVE = 'active';
+const ENTRY_KEY = 'kidsmath-entry:' + new URL('../../', import.meta.url).pathname;
+let confirmedId;
+export function isProfileConfirmed() {
+  if (!confirmedId) try { confirmedId = sessionStorage.getItem(ENTRY_KEY); } catch {}
+  return !!getActiveProfile() && confirmedId === getActiveProfile().id;
+}
+export function confirmProfileSelection(id) {
+  if (!getProfile(id)) throw new Error('档案不存在，请重新选择。');
+  confirmedId = id;
+  try { sessionStorage.setItem(ENTRY_KEY, id); } catch {}
+}
 
 export const AVATARS = ['🦊', '🐼', '🐯', '🐰', '🐨', '🐸', '🦁', '🐧', '🐢', '🦄'];
 

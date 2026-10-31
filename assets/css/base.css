@@ -37,6 +37,7 @@ h2{font-size:19px;margin:0 0 12px}
 .brand{text-decoration:none;font-size:19px;font-weight:650}
 .header-nav{display:flex;flex-wrap:wrap;gap:8px;margin-left:auto}
 body:has(.start-page) .header-nav{display:none}
+body:has(.profiles-entry) .header-nav{display:none}
 .nav-link{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:7px 10px;text-decoration:none;font-size:14px}
 .nav-link[aria-current]{text-decoration:underline;text-underline-offset:7px;font-weight:700}
 .profile-copy{display:flex;align-items:center;gap:8px;font-size:13px}
