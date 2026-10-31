@@ -73,10 +73,7 @@ function paint(root, { resetScroll = false } = {}) {
     el('header', { class: 'page-head' }, [
       el('span', { class: 'eyebrow' }, [icon('book'), '把不会的，变成会的']),
       el('h1', { text: '错题本', tabindex: -1 }),
-      el('p', { class: 'muted', text: '自动收集首次答错的题，支持筛选、错题重练、举一反三和查看学习统计。' }),
-      el('div', { class: 'actions mistakes-head-actions' }, [
-        el('a', { class: 'btn', href: '#/stats', text: '查看学习统计' })
-      ])
+      el('p', { class: 'muted', text: '自动收集首次答错的题，支持筛选、错题重练和举一反三。' })
     ]),
 
     el('section', { class: 'card mistakes-overview' }, [
