@@ -50,10 +50,10 @@ function boot() {
       el('span', { class: 'brand-name', text: '口算小达人' })
     ]),
     el('nav', { class: 'header-nav', 'aria-label': '主导航' }, [
-      el('a', { class: 'nav-link', href: '#/home', text: '开始' }),
       el('a', { class: 'nav-link', href: '#/practice', text: '出题练习' }),
       el('a', { class: 'nav-link', href: '#/history', text: '成绩历史' }),
       el('a', { class: 'nav-link', href: '#/mistakes', text: '错题本' }),
+      el('a', { class: 'nav-link', href: '#/stats', text: '学习统计' }),
       el('a', { class: 'nav-link', href: '#/profiles', text: '档案' }),
       el('a', { class: 'nav-link', href: '#/settings', text: '数据管理' })
     ]),
@@ -75,7 +75,7 @@ function boot() {
   const updateNavigation = () => {
     const path = window.location.hash.split('?')[0];
     header.querySelectorAll('.nav-link').forEach(link => {
-      if (link.hash === path || (link.hash === '#/home' && !path)
+      if (link.hash === path
           || (link.hash === '#/practice' && (path === '#/quiz' || path === '#/preview'))
           || (link.hash === '#/history' && path === '#/result')) link.setAttribute('aria-current', 'page');
       else link.removeAttribute('aria-current');

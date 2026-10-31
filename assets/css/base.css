@@ -36,6 +36,7 @@ h2{font-size:19px;margin:0 0 12px}
 .topbar{position:sticky;top:0;z-index:10;max-width:1100px;margin:0 auto;padding:14px 20px;display:flex;align-items:center;flex-wrap:wrap;gap:12px 24px;border-bottom:1px solid var(--c-line);background:#fff}
 .brand{text-decoration:none;font-size:19px;font-weight:650}
 .header-nav{display:flex;flex-wrap:wrap;gap:8px;margin-left:auto}
+body:has(.start-page) .header-nav{display:none}
 .nav-link{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:7px 10px;text-decoration:none;font-size:14px}
 .nav-link[aria-current]{text-decoration:underline;text-underline-offset:7px;font-weight:700}
 .profile-copy{display:flex;align-items:center;gap:8px;font-size:13px}
