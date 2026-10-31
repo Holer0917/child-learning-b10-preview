@@ -250,7 +250,7 @@ body:not(:has(.start-page)) #pwa-panel{display:none}
 .pwa-panel .btn{font-size:13px}
 .pwa-panel p{overflow-wrap:anywhere}
 @media (hover:hover){
-.btn:hover:not(:disabled),.chip:hover,.start-entry:hover,.history-record:hover{border-color:#111;text-decoration:underline}
+.btn:hover:not(:disabled),.chip:hover,.start-entry:hover{border-color:#111;text-decoration:underline}
 }
 @media (pointer:coarse){
 body:has(.quiz-page) .header-nav{display:none}
@@ -393,6 +393,7 @@ a.profile-chip{text-decoration:none}
 .history-filter-bar{display:flex;flex-wrap:wrap;gap:12px;margin:12px 0}
 .filter-field{display:grid;gap:4px;flex:1;min-width:140px}
 .history-record-item{position:relative;list-style:none}
+.record-detail{grid-column:2;justify-self:start}
 .history-record-item .history-record{padding-right:64px}
 .record-delete{position:absolute;right:12px;top:12px;min-width:44px;min-height:44px;padding:8px;border:1px solid #777;background:#fff;color:#111;border-radius:6px;cursor:pointer}
 .input:focus-visible,input[type="date"]:focus-within,input[type="file"]:focus-visible{outline:3px solid #111;outline-offset:2px}

@@ -26,7 +26,7 @@ export function renderHistory(root, ctx) {
       el('header', { class: 'page-head' }, [
         el('span', { class: 'eyebrow' }, [icon('trophy'), '每一次认真，都留在这里']),
         el('h1', { text: '成绩历史' }),
-        el('p', { class: 'muted', text: '查看当前孩子的近期练习，点开一条记录，看看当时的表现。' })
+        el('p', { class: 'muted', text: '查看当前孩子的近期练习，点击“查看详情”回顾该次表现。' })
       ]),
       el('section', { class: 'card history-overview' }, [
         stat('累计练习', `${summary.count} 次`),
@@ -114,9 +114,8 @@ function recordCard(r, onDelete) {
   const counts = r.compressed ? r.kpCount ?? {} : Object.fromEntries((r.paper?.questions ?? []).map(q => [q.kpId, 1]));
   const topics = Object.keys(counts).map(id => getKnowledgePoint(id)?.name ?? id);
 
-  const link = el('a', {
-    class: 'history-record', href: `#/result?id=${encodeURIComponent(r.id)}`,
-    'aria-label': `查看 ${formatDate(r.finishedAt, 'YYYY-MM-DD HH:mm')} 的练习详情`
+  const card = el('article', {
+    class: 'history-record', tabindex: -1,
   }, [
     el('div', { class: 'record-score' }, [
       el('strong', { text: formatAccuracy(r.accuracy) }),
@@ -132,7 +131,10 @@ function recordCard(r, onDelete) {
       r.compressed ? el('span', { class: 'summary-label', text: '摘要 · 无逐题明细' }) : null
     ]),
     el('span', { class: 'record-duration' }, [icon('clock'), humanDuration(r.elapsedMs)]),
-    icon('arrow', 'record-arrow')
+    el('a', {
+      class: 'btn record-detail', href: `#/result?id=${encodeURIComponent(r.id)}`,
+      'aria-label': `查看详情：${formatDate(r.finishedAt, 'YYYY-MM-DD HH:mm')} 的练习`
+    }, '查看详情')
   ]);
 
   const deleteBtn = el('button', {
@@ -144,7 +146,7 @@ function recordCard(r, onDelete) {
   }, '✕');
 
   const item = el('li', { class: 'history-record-item',  },
-    [link, deleteBtn]);
+    [card, deleteBtn]);
 
   return item;
 }
