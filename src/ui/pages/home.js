@@ -4,6 +4,7 @@ import { resumeSession } from '../../app/quizSession.js';
 import { formatDate } from '../../utils/date.js';
 import { formatAccuracy } from '../../utils/format.js';
 import { getActiveProfile } from '../../domain/profile.js';
+import { icon } from '../components/icon.js';
 
 /** 学习开始页，只展示真实数据与入口。 */
 export function renderHome(root) {
@@ -12,12 +13,15 @@ export function renderHome(root) {
   const active = resumeSession();
   const entry = (href, name, desc, className, note) => el('a', {
     href, class: `start-entry ${className}`, 'aria-label': name
-  }, [el('h2', { text: name }), el('p', { text: desc }),
+  }, [el('span', { class: 'home-entry-art' }, icon(className === 'entry-practice' ? 'pencil' : className === 'entry-history' ? 'trophy' : 'book')),
+    el('h2', { text: name }), el('p', { text: desc }),
     el('span', { class: 'entry-bottom', text: note })]);
   root.replaceChildren(el('section', { class: 'page start-page' }, [
     el('header', { class: 'page-head' }, [
+      el('span', { class: 'home-welcome', text: getActiveProfile() ? `${getActiveProfile().name}的学习时光` : '欢迎来到口算小达人' }),
       el('h1', { text: '开始' }),
-      el('p', { class: 'muted', text: '选择出题练习、查看成绩历史或打开错题本。' })
+      el('p', { class: 'muted', text: '每天练一练，把小小努力变成大大进步。' }),
+      el('div', { class: 'home-math', 'aria-hidden': 'true' }, [el('span', { text: '+' }), el('span', { text: '×' }), el('span', { text: '=' })])
     ]),
     !getActiveProfile() ? el('section', { class: 'card' }, [el('h2', { text: '先创建学习档案' }),
       el('a', { class: 'btn', href: '#/profiles', text: '创建学习档案' })]) : null,
