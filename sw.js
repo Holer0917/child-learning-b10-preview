@@ -1,5 +1,5 @@
 /* 每次发布修改缓存资源时必须递增 VERSION；此脚本不缓存用户数据。 */
-const VERSION = 'abc-preview-2';
+const VERSION = 'abc-preview-3';
 const BASE = new URL('./', self.location.href);
 const PREFIX = `kidsmath-shell:${BASE.pathname}:`;
 const CACHE_NAME = PREFIX + VERSION;

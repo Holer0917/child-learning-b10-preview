@@ -83,7 +83,7 @@ function paint(root, focusId) {
       el('div', { class: 'home-workspace' }, [
         el('div', { class: 'knowledge-column' }, [
           card('选择年级', gradeRow(root), '01', '支持小学 1–3 年级'),
-          card('选择知识点', pointBlock(root), '02', '共 24 个知识点，可按年级查看并选择')
+          card('选择知识点', pointEntry(root), '02', '集中选择，确认后返回练习设置')
         ]),
         el('aside', { class: 'settings-column', 'aria-label': '练习设置' }, [
           card('练习设置', [optionBlock(root), compatibilityBlock(),
@@ -131,23 +131,22 @@ function resumeBlock(root) {
   ]));
 }
 
-function gradeRow(root) {
+function gradeRow(root, selection = state, refresh = id => paint(root, id)) {
   const notes = ['打好计算基础', '乘除法小进阶', '探索更多运算'];
   return el('div', { class: 'chips grade-options' }, GRADES.map((g) =>
     el('button', {
-      id: `grade-${g.id}`,
-      class: 'chip' + (g.id === state.grade ? ' is-active' : ''),
+      id: `${selection === state ? 'grade' : 'kp-grade'}-${g.id}`,
+      class: 'chip' + (g.id === selection.grade ? ' is-active' : ''),
       type: 'button',
-      'aria-pressed': g.id === state.grade ? 'true' : 'false',
+      'aria-pressed': g.id === selection.grade ? 'true' : 'false',
       'aria-label': g.name,
       onclick: () => {
-        if (g.id === state.grade) return;
-        state.grade = g.id;
-        state.keyword = '';
-        state.kpIds = getGradeDefaultKPs(g.id);
-        state.paper = null;
-        state.error = '';
-        paint(root, `grade-${g.id}`);
+        if (g.id === selection.grade) return;
+        selection.grade = g.id;
+        selection.keyword = '';
+        selection.kpIds = getGradeDefaultKPs(g.id);
+        if (selection === state) { state.paper = null; state.error = ''; }
+        refresh(`${selection === state ? 'grade' : 'kp-grade'}-${g.id}`);
       }
     }, [el('span', { class: 'grade-number', text: String(g.id) }),
       el('span', { class: 'grade-option-copy' }, [el('strong', { text: g.name }),
@@ -155,28 +154,79 @@ function gradeRow(root) {
   ));
 }
 
-function pointBlock(root) {
+function pointEntry(root) {
+  const names = state.kpIds.map(id => getKnowledgePoint(id).name);
+  return el('button', { id: 'choose-kp', class: 'kp-entry', type: 'button', 'aria-haspopup': 'dialog',
+    onclick: () => openPoints(root) }, [
+    el('span', { class: 'kp-entry-copy' }, [el('strong', { text: `已选 ${names.length} 个知识点` }),
+      el('span', { class: 'muted', text: names.length ? names.slice(0, 2).join('、') + (names.length > 2 ? `等 ${names.length} 项` : '') : '点击选择本次练习内容' })]),
+    el('span', { class: 'kp-entry-link', text: '选择 ›' })
+  ]);
+}
+
+function openPoints(root) {
+  const draft = { grade: state.grade, kpIds: [...state.kpIds], keyword: '' };
+  const scroll = window.scrollY;
+  const dialog = el('dialog', { class: 'kp-dialog', 'aria-labelledby': 'kp-dialog-title' });
+  dialog.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !e.isComposing) { e.preventDefault(); dialog.close(); return; }
+    if (e.key !== 'Tab') return;
+    const nodes = [...dialog.querySelectorAll('button,input')].filter(n => !n.disabled);
+    const i = nodes.indexOf(document.activeElement);
+    if ((e.shiftKey && i <= 0) || (!e.shiftKey && i === nodes.length - 1)) {
+      e.preventDefault(); nodes[e.shiftKey ? nodes.length - 1 : 0].focus();
+    }
+  });
+  const body = el('div', { class: 'kp-dialog-body' });
+  const grades = el('div');
+  const count = el('span', { class: 'small', role: 'status', 'aria-live': 'polite' });
+  const updateCount = () => { count.textContent = `已选 ${draft.kpIds.length} 个知识点`; };
+  const refresh = focusId => {
+    grades.replaceChildren(gradeRow(root, draft, refresh));
+    body.replaceChildren(pointBlock(draft, updateCount));
+    updateCount();
+    dialog.querySelector(`#${focusId}`)?.focus({ preventScroll: true });
+  };
+  dialog.append(el('div', { class: 'kp-dialog-head' }, [
+    el('div', { class: 'row-between' }, [el('h2', { id: 'kp-dialog-title', text: '选择知识点', tabindex: -1, autofocus: true }),
+      el('button', { id: 'kp-cancel', class: 'btn', type: 'button', text: '取消', onclick: () => dialog.close() })]), grades
+  ]), body, el('div', { class: 'kp-dialog-footer' }, [count,
+    el('button', { id: 'kp-confirm', class: 'btn btn-primary', type: 'button', text: '确认选择', onclick: () => dialog.close('confirm') })]));
+  dialog.addEventListener('close', () => {
+    if (!root.contains(dialog)) return;
+    if (dialog.returnValue === 'confirm') {
+      const changed = state.grade !== draft.grade || [...state.kpIds].sort().join() !== [...draft.kpIds].sort().join();
+      state.grade = draft.grade; state.kpIds = draft.kpIds;
+      if (changed) { state.paper = null; state.error = ''; }
+      dialog.remove(); paint(root, 'choose-kp');
+    } else { dialog.remove(); root.querySelector('#choose-kp')?.focus({ preventScroll: true }); }
+    window.scrollTo(0, scroll);
+  });
+  refresh(); root.append(dialog); dialog.showModal();
+}
+
+function pointBlock(selection, onChange) {
   const picker = el('div', { class: 'knowledge-picker' });
   const clear = el('button', {
     id: 'clear-kp-search', class: 'btn', type: 'button', text: '清空搜索',
-    disabled: !state.keyword,
+    disabled: !selection.keyword,
     onclick: () => {
-      state.keyword = '';
+      selection.keyword = '';
       search.value = '';
       clear.disabled = true;
-      updatePointResults(picker, root);
+      updatePointResults(picker, selection, onChange);
       search.focus({ preventScroll: true });
     }
   });
   const search = el('input', {
-    id: 'kp-search', class: 'kp-search-input', type: 'search', value: state.keyword,
+    id: 'kp-search', class: 'kp-search-input', type: 'search', value: selection.keyword,
     placeholder: '输入名称或说明，如“进位”“分数”', autocomplete: 'off',
     'aria-controls': 'kp-results', 'aria-describedby': 'kp-search-hint',
     oninput: e => {
-      state.keyword = e.target.value;
-      clear.disabled = !state.keyword;
+      selection.keyword = e.target.value;
+      clear.disabled = !selection.keyword;
       // 只更新列表，保留输入框、光标和中文输入法的组合输入状态。
-      updatePointResults(picker, root);
+      updatePointResults(picker, selection, onChange);
     }
   });
   picker.append(
@@ -186,34 +236,32 @@ function pointBlock(root) {
       text: '切换年级会清空搜索，并勾选该年级的默认知识点。' }),
     el('div', { id: 'kp-results' })
   );
-  updatePointResults(picker, root);
+  updatePointResults(picker, selection, onChange);
   return picker;
 }
 
-function updatePointResults(picker, root) {
-  const grade = GRADES.find(g => g.id === state.grade);
-  const allPoints = getKnowledgePoints(state.grade);
-  const points = filterKnowledgePoints({ grade: state.grade, keyword: state.keyword });
-  const searching = !!state.keyword.trim();
+function updatePointResults(picker, selection, onChange, focusId) {
+  const grade = GRADES.find(g => g.id === selection.grade);
+  const allPoints = getKnowledgePoints(selection.grade);
+  const points = filterKnowledgePoints({ grade: selection.grade, keyword: selection.keyword });
+  const searching = !!selection.keyword.trim();
   const bulk = (mode, label) => el('button', {
     id: `kp-select-${mode}`, class: 'btn', type: 'button',
     text: label + (searching ? '搜索结果' : ''), disabled: points.length === 0,
     onclick: () => {
-      const selected = new Set(state.kpIds);
+      const selected = new Set(selection.kpIds);
       for (const point of points) {
         if (mode === 'none' || (mode === 'invert' && selected.has(point.id))) selected.delete(point.id);
         else selected.add(point.id);
       }
-      state.kpIds = allPoints.filter(point => selected.has(point.id)).map(point => point.id);
-      state.paper = null;
-      state.error = '';
-      paint(root, `kp-select-${mode}`);
+      selection.kpIds = allPoints.filter(point => selected.has(point.id)).map(point => point.id);
+      updatePointResults(picker, selection, onChange, `kp-select-${mode}`);
     }
   });
 
   picker.querySelector('#kp-results').replaceChildren(
     el('p', { class: 'selection-count', role: 'status', 'aria-live': 'polite',
-      text: `${grade.name}已选 ${state.kpIds.length} / ${allPoints.length} 个；当前显示 ${points.length} 个` }),
+      text: `${grade.name}已选 ${selection.kpIds.length} / ${allPoints.length} 个；当前显示 ${points.length} 个` }),
     el('div', { class: 'kp-bulk-actions', 'aria-label': '知识点批量选择' }, [
       bulk('all', '全选'), bulk('none', '全不选'), bulk('invert', '反选')
     ]),
@@ -222,7 +270,7 @@ function updatePointResults(picker, root) {
     points.length === 0
       ? el('p', { class: 'kp-empty', text: '没有找到匹配的知识点，请更换关键词或清空搜索。' })
       : el('ul', { class: 'kp-list' }, points.map((kp) => {
-      const checked = state.kpIds.includes(kp.id);
+      const checked = selection.kpIds.includes(kp.id);
       return el('li', {}, [
         el('label', { class: 'kp-item' + (checked ? ' is-checked' : '') }, [
           el('input', {
@@ -231,12 +279,10 @@ function updatePointResults(picker, root) {
             checked,
             'aria-label': `${kp.name}，${grade.name}，第 ${kp.order} 项，${kp.difficulty} 星`,
             onchange: (e) => {
-              state.kpIds = e.target.checked
-                ? [...state.kpIds, kp.id]
-                : state.kpIds.filter((id) => id !== kp.id);
-              state.paper = null;
-              state.error = '';
-              paint(root, `kp-${kp.id}`);
+              selection.kpIds = e.target.checked
+                ? [...selection.kpIds, kp.id]
+                : selection.kpIds.filter((id) => id !== kp.id);
+              updatePointResults(picker, selection, onChange, `kp-${kp.id}`);
             }
           }),
           el('span', { class: 'kp-copy' }, [
@@ -254,6 +300,8 @@ function updatePointResults(picker, root) {
       ]);
     }))
   );
+  onChange();
+  if (focusId) picker.querySelector(`#${focusId}`)?.focus({ preventScroll: true });
 }
 
 function optionBlock(root) {
