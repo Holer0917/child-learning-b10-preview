@@ -26,7 +26,6 @@ export function renderHistory(root, ctx) {
       el('header', { class: 'page-head' }, [
         el('span', { class: 'eyebrow' }, [icon('trophy'), '每一次认真，都留在这里']),
         el('h1', { text: '成绩历史' }),
-        el('p', { class: 'muted', text: '查看当前孩子的近期练习，点击“查看详情”回顾该次表现。' })
       ]),
       el('section', { class: 'card history-overview' }, [
         stat('累计练习', `${summary.count} 次`),
@@ -45,7 +44,6 @@ export function renderHistory(root, ctx) {
         filterBar(allKpIds, filters, () => paint()),
         filters.from && filters.to && filters.from > filters.to ? el('p', { class: 'alert', role: 'alert', text: '开始日期不能晚于结束日期。' }) : null,
 
-        filtered.length ? el('p', { class: 'muted small history-count', text: `已保留 ${records.length} 次练习，当前筛选显示 ${shown.length} 次；按完成时间从新到旧排列。` }) : null,
         filtered.length ? el('ol', { class: 'history-list' }, shown.map(r => recordCard(r, () => {
           if (window.confirm(`确定删除 ${formatDate(r.finishedAt, 'YYYY-MM-DD HH:mm')} 的练习记录吗？删除后无法恢复；由已保留历史计算的趋势或掌握度将相应变化，不会删除独立错题本条目。`)) {
             const ok = deleteHistoryRecord(r.id);
@@ -62,7 +60,6 @@ export function renderHistory(root, ctx) {
         ]),
         limit === 0 && shown.length < filtered.length ? el('button', { class: 'btn load-history', text: '再看更早的记录', onclick: () => { const index = shown.length; visible += 20; paint(); root.querySelectorAll('.history-record')[index]?.focus(); } }) : null
       ]),
-      el('p', { class: 'history-local-note' }, [icon('shield'), '这里显示当前浏览器保存的练习记录；更换设备或清理浏览器数据后无法自动找回。'])
     ]));
     if (focusId) (document.getElementById(focusId) ?? root.querySelector('h1'))?.focus({ preventScroll: true });
   }
