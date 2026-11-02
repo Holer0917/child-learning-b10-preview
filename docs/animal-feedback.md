@@ -1,0 +1,13 @@
+# Animal answer feedback — preview only
+
+2026-11-02, requested by the user: each judged answer shows a cartoon animal and cartoon-style Chinese text. Correct answers use a celebrating orange fox with “答对了！”. Incorrect answers use a slightly regretful brown bear with “答错了，再试试”; the original correct-answer explanation remains visible. The bear is mildly disappointed rather than crying or blaming the learner.
+
+The two illustrations were generated with the built-in imagegen tool. The initial smiling bear was rejected after the user's expression clarification; the final bear is an imagegen edit. Final artwork was visually inspected, then mechanically reduced to 192px transparent PNGs for web delivery. Files: assets/feedback/correct.png (48358 bytes), incorrect.png (35010 bytes). Text is actual HTML, with a rounded system-font stack and CSS styling, rather than text baked into the bitmap. Decorative image alt is empty, and the existing live status conveys the result.
+
+Invalid input and skipping do not show a correct/incorrect animal. Retrying hides the art and restores input; a correct correction shows the fox but preserves the original first-attempt result. The existing 700ms automatic next-question behavior remains unchanged. Broken images hide themselves while text and actions remain usable. Both PNGs are included in the SW precache, so offline feedback works.
+
+On small screens, completed-answer instructions are hidden and feedback/actions use compact sizing; short landscape viewports place feedback in the right controls column. Editing dimensions and grading are unchanged. Readable quiz source is authoring/quiz.js; scripts/build-entry.py now generates the quiz runtime alongside main and profiles, keeping the original 300000-byte non-PNG budget. The checked-in site requires no Python or third-party browser dependency.
+
+Validation: animal-feedback.cjs checks image/text mapping, offline refresh, broken-image fallback, retry, original-score notice, invalid/skip state and 44px unoccluded actions at 360/390/568/1440px. feedback-browser.cjs retains 11 groups for sound, preference, errors, motion and progression; mobile-quiz-browser.cjs covers the existing eight groups plus incorrect-image single-screen checks in all 45 boundary combinations. The historical scripts have been adapted to explicitly create a test profile and wait for the new editable question between isolated fixtures. No learning data from normal browser profiles is used, and no physical-device acceptance is claimed.
+
+Only the independent preview repository/site is authorized for this change. SW: abc-preview-25. Production GitHub, Gitee and website remain unchanged.

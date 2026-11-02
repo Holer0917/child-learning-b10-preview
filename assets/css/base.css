@@ -516,3 +516,23 @@ body{display:flex;flex-direction:column;min-height:100dvh}
 .btn-primary{background:linear-gradient(135deg,#176b68,#245c78)}
 .profile-card{box-shadow:0 3px 14px #284f5708}
 .pwa-panel{padding:14px;border:1px solid #dce9e6;border-radius:14px;background:#f7faf9}
+.animal-feedback{display:flex;align-items:center;gap:10px;margin-top:6px;padding:6px 8px;border-radius:14px;background:#edf8f1}
+.animal-wrong{background:#fff4e5}
+.feedback-animal{width:clamp(40px,12dvh,72px);height:clamp(40px,12dvh,72px);flex:none;object-fit:contain}
+.animal-feedback .answer-feedback{margin:0;min-width:0}
+.animal-title{display:block;font-family:"YouYuan","幼圆","Yuanti SC","Comic Sans MS","Microsoft YaHei",sans-serif;font-size:22px;font-weight:900;letter-spacing:1px;color:#176337;text-shadow:1px 2px 0 #fff}
+.animal-wrong .animal-title{color:#875117}
+.animal-feedback .answer-feedback>span{display:block;font-size:12px}
+@media(max-height:450px){.animal-title{font-size:17px}.animal-feedback{gap:6px;padding:3px 6px}}
+@media(pointer:coarse),(max-width:700px){
+.quiz-card.has-feedback #answer-hint{display:none}
+.animal-feedback{padding:4px 6px;gap:8px}
+.feedback-animal{width:clamp(36px,9dvh,56px);height:clamp(36px,9dvh,56px)}
+.animal-title{font-size:18px;line-height:1.3;letter-spacing:0}
+.quiz-card.has-feedback .quiz-actions .btn{flex:1;min-width:0;padding-inline:3px}
+}
+@media(pointer:coarse) and (max-height:400px) and (min-width:560px){
+.quiz-card.has-feedback{position:relative}
+.quiz-card.has-feedback .animal-feedback{position:absolute;right:8px;top:8px;width:188px}
+.quiz-card.has-feedback .quiz-controls{padding-top:112px}
+}

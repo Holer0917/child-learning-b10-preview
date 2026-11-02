@@ -1,6 +1,6 @@
 # Entry/profile source
 
-Edit `main.js` and `profiles.js` here, then regenerate the corresponding runtime modules:
+Edit `main.js`, `profiles.js` and `quiz.js` here, then regenerate the corresponding runtime modules:
 
 ```sh
 python -m pip install rjsmin==1.2.4
