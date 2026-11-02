@@ -46,7 +46,7 @@ body:has(.profiles-entry) .header-nav{display:none}
 .page{min-width:0}
 .page-head{margin-bottom:24px}
 .page-head p{color:var(--c-muted);font-size:14px}
-.card{padding:20px;margin-bottom:20px;border:1px solid var(--c-line);border-radius:18px;background:#fff;min-width:0;box-shadow:0 5px 22px #284f5710}
+.card{padding:20px;margin-bottom:20px;border:1px solid var(--c-line);border-radius:18px;background:#fff;min-width:0;box-shadow:0 8px 28px #284f570d}
 .card-title{margin:0 0 10px;font-size:17px;font-weight:650}
 .card-heading{display:flex;align-items:flex-start;gap:10px;margin-bottom:16px}
 .card-heading .card-title{margin-bottom:3px}
@@ -509,3 +509,10 @@ body{display:flex;flex-direction:column;min-height:100dvh}
 .settings-page>.page-head,.settings-page>.settings-message{grid-column:1/-1}
 .settings-page>.card{margin:0}
 }
+.page:not(.start-page):not(.quiz-page)>h1,.page:not(.start-page)>.page-head h1{border-left:4px solid #79b7ac;padding-left:12px}
+.card-title{color:#285a60}
+.stats-summary-grid .history-stat,.history-overview .history-stat{padding:14px 8px;background:#f0f8f5;border-radius:14px}
+.stats-fold>summary{padding:10px 12px;border-radius:10px;background:#f3f8f7}
+.btn-primary{background:linear-gradient(135deg,#176b68,#245c78)}
+.profile-card{box-shadow:0 3px 14px #284f5708}
+.pwa-panel{padding:14px;border:1px solid #dce9e6;border-radius:14px;background:#f7faf9}
