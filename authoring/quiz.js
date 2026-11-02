@@ -12,6 +12,27 @@ import { startMistakePractice } from '../../app/mistakePractice.js';
 
 export function renderQuiz(root, ctx) {
   let autoNext = null, ticker = null, disposed = false, retrying = false;
+  let popupTimer;
+  function closePopup() {
+    clearTimeout(popupTimer);
+    const popup = root.querySelector('.feedback-popup'), focused = popup?.contains(document.activeElement);
+    popup?.remove();
+    if (focused) focusElement(root.querySelector('#next-question, #submit-answer'));
+  }
+  function popupKey(e) { if (e.key === 'Escape') closePopup(); }
+  document.addEventListener('keydown', popupKey);
+  function showPopup(correct) {
+    closePopup();
+    root.appendChild(el('aside', { class: 'feedback-popup' + (correct ? '' : ' animal-wrong'), 'aria-label': '答题反馈' }, [
+      el('button', { class: 'popup-close', type: 'button', 'aria-label': '关闭答题反馈', text: '×', onclick: closePopup }),
+      el('div', { 'aria-hidden': 'true' }, [
+        el('img', { class: 'feedback-animal', src: new URL(`../../../assets/feedback/${correct ? 'correct' : 'incorrect'}.png`, import.meta.url).href,
+          alt: '', width: 144, height: 144, onerror: e => { e.currentTarget.hidden = true; } }),
+        el('strong', { class: 'animal-title', text: correct ? '答对了！' : '答错了，再试试' })
+      ])
+    ]));
+    popupTimer = setTimeout(closePopup, 1400);
+  }
   const answerFeedback = createAnswerFeedback(updateSoundControls);
   function updateSoundControls() {
     const state = answerFeedback.state(), button = root.querySelector('#toggle-sound');
@@ -77,6 +98,7 @@ export function renderQuiz(root, ctx) {
     dialog.showModal();
   }
   function draw(reveal = false, restoreId) {
+    closePopup();
     clearAuto();
     answerFeedback.stop();
     const s = resumeSession();
@@ -111,7 +133,7 @@ export function renderQuiz(root, ctx) {
         retrying = false;
         draw(true);
         if (a.correct) root.querySelector('#answer-status')?.classList.add('feedback-pulse');
-        if (!a.skipped) answerFeedback.play(a.correct);
+        if (!a.skipped) { answerFeedback.play(a.correct); showPopup(a.correct); }
       } catch (e) {
         error.textContent = e.message;
         input.setAttribute('aria-invalid', 'true');
@@ -136,12 +158,6 @@ export function renderQuiz(root, ctx) {
           : `✗ ${correction ? '再练练，' : ''}正确答案是 ${feedback.expected}`;
       const streak = consecutiveCorrect(s);
       if (streak >= 5 && !correction) status.textContent += ` 连对 ${streak} 题，继续加油！`;
-      if (!feedback.skipped) {
-        const detail = feedback.correct && !correction
-          ? status.textContent.replace('✓ 答对了！', '').trim() || '真棒，继续加油！' : status.textContent;
-        status.replaceChildren(el('strong', { class: 'animal-title', text: feedback.correct ? '答对了！' : '答错了，再试试' }),
-          el('span', { text: detail }));
-      }
     } else if (retrying) status.textContent = '再试一次；首次成绩不会改变。';
     const actions = editing ? [
       el('button', { id: 'submit-answer', class: 'btn btn-primary', text: '提交答案', onclick: () => submit() }),
@@ -197,8 +213,7 @@ export function renderQuiz(root, ctx) {
               : keypadMode === 'decimal' ? '小数写成 3.5，点击“.”输入小数点。' : '输入答案，按回车或点击提交。' }),
         q.difficultyNote ? el('p', { class: 'variant-note', text: q.difficultyNote }) : null,
         feedback && !editing && !feedback.skipped ? el('div', { class: 'animal-feedback' + (feedback.correct ? '' : ' animal-wrong') }, [
-          el('img', { class: 'feedback-animal', src: new URL(`../../../assets/feedback/${feedback.correct ? 'correct' : 'incorrect'}.png`, import.meta.url).href,
-            alt: '', width: 72, height: 72, onerror: e => { e.currentTarget.hidden = true; } }), status
+          status
         ]) : status, error]),
         el('div', { class: 'quiz-controls' }, [
         el('div', { class: 'keypad-caption' }, [icon('grid'), editing ? '敲下你的答案' : '每一步，都算进步']),
@@ -235,6 +250,6 @@ export function renderQuiz(root, ctx) {
       ])
     ]));
   }
-  return { dispose() { disposed = true; clearAuto(); clearInterval(ticker); answerFeedback.dispose(); },
+  return { dispose() { disposed = true; closePopup(); document.removeEventListener('keydown', popupKey); clearAuto(); clearInterval(ticker); answerFeedback.dispose(); },
     beforeLeave() { return !resumeSession() || window.confirm('离开答题页？进度已暂存，可回首页继续练习。'); } };
 }

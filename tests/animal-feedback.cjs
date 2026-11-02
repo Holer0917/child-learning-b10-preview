@@ -30,22 +30,22 @@ const server=http.createServer(async(req,res)=>{
    const answer=()=>page.evaluate(async()=>{const {resumeSession}=await import(new URL('src/app/quizSession.js',location.href).href);const s=resumeSession();return s.paper.questions[s.cursor].answer;});
    const enter=async value=>{await page.locator('#quiz-answer').evaluate((n,v)=>{n.value=v;n.dispatchEvent(new Event('input',{bubbles:true}));},value);await page.locator('#submit-answer').click();};
    const fit=async()=>{assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);if(width<1000)assert.equal(await page.evaluate(()=>document.documentElement.scrollHeight<=innerHeight+1),true,`${width}x${height} feedback scroll`);assert.equal(await page.locator('.quiz-actions button').evaluateAll(ns=>ns.every(n=>{const r=n.getBoundingClientRect(),hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);return r.width>=44&&r.height>=44&&(hit===n||n.contains(hit));})),true);};
-   const image=async file=>{await page.locator(`.feedback-animal[src$="/${file}.png"]`).waitFor();await page.waitForFunction(()=>document.querySelector('.feedback-animal')?.naturalWidth>0);await fit();};
+   const image=async file=>{await page.locator(`.feedback-animal[src$="/${file}.png"]`).waitFor();await page.waitForFunction(()=>document.querySelector('.feedback-animal')?.naturalWidth>0);const box=await page.locator('.feedback-popup').boundingBox();assert.ok(Math.abs(box.x+box.width/2-width/2)<2);assert.ok(Math.abs(box.y+box.height/2-height/2)<2);await fit();};
    await enter('abc');assert.equal(await page.locator('.feedback-animal').count(),0);
-   await context.setOffline(true);await enter(await answer());await image('correct');assert.equal(await page.locator('.animal-title').textContent(),'答对了！');
+   await context.setOffline(true);await enter(await answer());await image('correct');assert.equal(await page.locator('.feedback-popup .animal-title').textContent(),'答对了！');
    if(!process.env.ANIMAL_SITE&&width===390)await page.screenshot({path:path.join(root,'.tmp/animal-correct.png')});
    await page.getByText('第 2 / 共 5 题',{exact:true}).waitFor();assert.equal(await page.locator('.feedback-animal').count(),0);
-   await enter('999');await image('incorrect');assert.equal(await page.locator('.animal-title').textContent(),'答错了，再试试');assert.ok((await page.locator('#answer-status').textContent()).includes('正确答案'));
+   await enter('999');await image('incorrect');assert.equal(await page.locator('.feedback-popup .animal-title').textContent(),'答错了，再试试');assert.ok((await page.locator('#answer-status').textContent()).includes('正确答案'));
    if(!process.env.ANIMAL_SITE&&[390,1440].includes(width))await page.screenshot({path:path.join(root,'.tmp',`animal-incorrect-${width}.png`)});
    await page.locator('.feedback-animal').evaluate(n=>{n.src='missing-feedback-art.png';});
-   await page.locator('.feedback-animal').waitFor({state:'hidden'});assert.equal(await page.locator('.animal-title').isVisible(),true);
-   await page.reload();await page.getByRole('button',{name:'继续练习',exact:true}).click();await image('incorrect');
+   await page.locator('.feedback-animal').waitFor({state:'hidden'});assert.equal(await page.locator('.feedback-popup .animal-title').isVisible(),true);await page.locator('.feedback-popup').waitFor({state:'detached'});
+   await page.reload();await page.getByRole('button',{name:'继续练习',exact:true}).click();assert.equal(await page.locator('.feedback-popup').count(),0);assert.ok((await page.locator('#answer-status').textContent()).includes('正确答案'));
    await page.locator('#retry-answer').click();assert.equal(await page.locator('.feedback-animal').count(),0);
-   await enter(await answer());await image('correct');assert.ok((await page.locator('#answer-status').textContent()).includes('首次成绩保留'));
+   await enter(await answer());await image('correct');assert.ok((await page.locator('#answer-status').textContent()).includes('首次成绩保留'));await page.getByRole('button',{name:'关闭答题反馈',exact:true}).click();assert.equal(await page.locator('.feedback-popup').count(),0);
    await page.getByText('第 3 / 共 5 题',{exact:true}).waitFor();await page.locator('#skip-question').click();assert.equal(await page.locator('.feedback-animal').count(),0);await fit();
    assert.deepEqual(errors,[]);checks.push({width,height,passed:true});await context.close();
   }
   await fs.mkdir(path.join(root,'.tmp'),{recursive:true});await fs.writeFile(path.join(root,'.tmp/animal-feedback-results.json'),JSON.stringify({executedAt:new Date().toISOString(),passed:true,site:base,checks},null,2));
-  console.log('PASS: correct/regret images with cartoon text, offline image restore, retry clears art and preserves first score, invalid/skip have no judgment image, mobile single-screen at 360/390/568/1440');
+  console.log('PASS: centered correct/regret popup, auto/manual dismissal, no replay on refresh, offline art, retry clears art and preserves first score, invalid/skip have no judgment image, mobile single-screen at 360/390/568/1440');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;}).finally(()=>server.close());
