@@ -444,7 +444,7 @@ body:has(.quiz-page) .topbar{display:none}
 @media (pointer:coarse) and (max-height:400px) and (min-width:560px){.quiz-card{grid-template-columns:minmax(0,1fr) 188px}.keypad{grid-template-columns:repeat(4,minmax(0,1fr))}#answer-hint{display:none}.quiz-problem .field-label{position:absolute;clip-path:inset(50%)}}
 
 .brand{display:inline-flex;align-items:center;gap:10px;color:var(--c-primary);letter-spacing:.4px}
-.brand:before{content:'✦';display:grid;place-items:center;width:32px;height:32px;border-radius:11px;background:var(--c-primary);color:#fff;font-size:22px}
+.brand:before{content:'';display:block;flex:0 0 32px;width:32px;height:32px;background:url('../icons/favicon.svg') center/contain no-repeat}
 .topbar{border-color:#e5eff0;border-radius:0 0 18px 18px}
 .nav-link{border-radius:10px;white-space:nowrap}
 .nav-link[aria-current]{background:#eaf7f3;color:var(--c-primary);text-decoration:none}
