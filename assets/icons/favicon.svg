@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+<title>口算小达人：数字积木</title>
+<rect width="512" height="512" rx="112" fill="#C3EDFC"/>
+<rect x="150" y="64" width="212" height="210" rx="49" fill="#00A69E"/>
+<path d="M256 111v112m-56-56h112" fill="none" stroke="#FFF9E6" stroke-width="40" stroke-linecap="round"/>
+<g stroke="#FFCB12" stroke-width="19" stroke-linecap="round"><path d="m101 128 18 26m-47 20 29 14m310-60-18 26m47 20-29 14"/></g>
+<rect x="48" y="246" width="204" height="208" rx="47" fill="#109BE9"/>
+<rect x="260" y="246" width="204" height="208" rx="47" fill="#FFC400"/>
+<path d="m120 311 29-22v122m-27 0h55" fill="none" stroke="#FFF9E6" stroke-width="32" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M322 316c10-39 80-37 80 4 0 21-25 34-46 52l-34 33h82" fill="none" stroke="#FFF9E6" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

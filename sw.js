@@ -1,11 +1,11 @@
 /* 每次发布修改缓存资源时必须递增 VERSION；此脚本不缓存用户数据。 */
-const VERSION = 'abc-preview-26';
+const VERSION = 'abc-preview-27';
 const BASE = new URL('./', self.location.href);
 const PREFIX = `kidsmath-shell:${BASE.pathname}:`;
 const CACHE_NAME = PREFIX + VERSION;
 const ASSETS = [
   'index.html', 'manifest.webmanifest',
-  'assets/css/base.css', 'assets/icons/app-192.png', 'assets/icons/app-512.png', 'assets/icons/apple-touch-icon.png',
+  'assets/icons/favicon.svg', 'assets/css/base.css', 'assets/icons/app-192.png', 'assets/icons/app-512.png', 'assets/icons/apple-touch-icon.png',
   'assets/feedback/correct.png', 'assets/feedback/incorrect.png',
   'src/main.js', 'src/app/pwa.js', 'src/app/quizSession.js', 'src/app/mistakePractice.js',
   'src/core/bus.js', 'src/core/router.js', 'src/core/schema.js', 'src/core/backupSchema.js', 'src/core/storage.js',
